@@ -1,4 +1,4 @@
-// Copyright 2019 Google LLC.
+// Copyright 2020 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -49,9 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
 	option "google.golang.org/api/option"
+	internaloption "google.golang.org/api/option/internaloption"
 	htransport "google.golang.org/api/transport/http"
 )
 
@@ -68,14 +69,18 @@ var _ = googleapi.Version
 var _ = errors.New
 var _ = strings.Replace
 var _ = context.Canceled
+var _ = internaloption.WithDefaultEndpoint
 
 const apiId = "bigtableadmin:v1"
 const apiName = "bigtableadmin"
 const apiVersion = "v1"
 const basePath = "https://bigtableadmin.googleapis.com/"
+const mtlsBasePath = "https://bigtableadmin.mtls.googleapis.com/"
 
 // NewService creates a new Service.
 func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	opts = append(opts, internaloption.WithDefaultEndpoint(basePath))
+	opts = append(opts, internaloption.WithDefaultMTLSEndpoint(mtlsBasePath))
 	client, endpoint, err := htransport.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -116,14 +121,122 @@ func (s *Service) userAgent() string {
 	return googleapi.UserAgent + " " + s.UserAgent
 }
 
+// Backup: A backup of a Cloud Bigtable table.
+type Backup struct {
+	// EndTime: Output only. `end_time` is the time that the backup was
+	// finished. The row data in the backup will be no newer than this
+	// timestamp.
+	EndTime string `json:"endTime,omitempty"`
+
+	// ExpireTime: Required. The expiration time of the backup, with
+	// microseconds granularity that must be at least 6 hours and at most 30
+	// days from the time the request is received. Once the `expire_time`
+	// has passed, Cloud Bigtable will delete the backup and free the
+	// resources used by the backup.
+	ExpireTime string `json:"expireTime,omitempty"`
+
+	// Name: A globally unique identifier for the backup which cannot be
+	// changed. Values are of the form
+	// `projects/{project}/instances/{instance}/clusters/{cluster}/
+	// backups/_a-zA-Z0-9*` The final segment of the name must be between 1
+	// and 50 characters in length. The backup is stored in the cluster
+	// identified by the prefix of the backup name of the form
+	// `projects/{project}/instances/{instance}/clusters/{cluster}`.
+	Name string `json:"name,omitempty"`
+
+	// SizeBytes: Output only. Size of the backup in bytes.
+	SizeBytes int64 `json:"sizeBytes,omitempty,string"`
+
+	// SourceTable: Required. Immutable. Name of the table from which this
+	// backup was created. This needs to be in the same instance as the
+	// backup. Values are of the form
+	// `projects/{project}/instances/{instance}/tables/{source_table}`.
+	SourceTable string `json:"sourceTable,omitempty"`
+
+	// StartTime: Output only. `start_time` is the time that the backup was
+	// started (i.e. approximately the time the CreateBackup request is
+	// received). The row data in this backup will be no older than this
+	// timestamp.
+	StartTime string `json:"startTime,omitempty"`
+
+	// State: Output only. The current state of the backup.
+	//
+	// Possible values:
+	//   "STATE_UNSPECIFIED" - Not specified.
+	//   "CREATING" - The pending backup is still being created. Operations
+	// on the backup may fail with `FAILED_PRECONDITION` in this state.
+	//   "READY" - The backup is complete and ready for use.
+	State string `json:"state,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "EndTime") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "EndTime") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *Backup) MarshalJSON() ([]byte, error) {
+	type NoMethod Backup
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// BackupInfo: Information about a backup.
+type BackupInfo struct {
+	// Backup: Output only. Name of the backup.
+	Backup string `json:"backup,omitempty"`
+
+	// EndTime: Output only. This time that the backup was finished. Row
+	// data in the backup will be no newer than this timestamp.
+	EndTime string `json:"endTime,omitempty"`
+
+	// SourceTable: Output only. Name of the table the backup was created
+	// from.
+	SourceTable string `json:"sourceTable,omitempty"`
+
+	// StartTime: Output only. The time that the backup was started. Row
+	// data in the backup will be no older than this timestamp.
+	StartTime string `json:"startTime,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Backup") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Backup") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *BackupInfo) MarshalJSON() ([]byte, error) {
+	type NoMethod BackupInfo
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // Cluster: A resizable group of nodes in a particular cloud location,
-// capable
-// of serving all Tables in the parent
-// Instance.
+// capable of serving all Tables in the parent Instance.
 type Cluster struct {
-	// DefaultStorageType: (`CreationOnly`)
-	// The type of storage used by this cluster to serve its
-	// parent instance's tables, unless explicitly overridden.
+	// DefaultStorageType: Immutable. The type of storage used by this
+	// cluster to serve its parent instance's tables, unless explicitly
+	// overridden.
 	//
 	// Possible values:
 	//   "STORAGE_TYPE_UNSPECIFIED" - The user did not specify a storage
@@ -132,29 +245,22 @@ type Cluster struct {
 	//   "HDD" - Magnetic drive (HDD) storage should be used.
 	DefaultStorageType string `json:"defaultStorageType,omitempty"`
 
-	// Location: (`CreationOnly`)
-	// The location where this cluster's nodes and storage reside. For
-	// best
-	// performance, clients should be located as close as possible to
-	// this
-	// cluster. Currently only zones are supported, so values should be of
-	// the
-	// form `projects/<project>/locations/<zone>`.
+	// Location: Immutable. The location where this cluster's nodes and
+	// storage reside. For best performance, clients should be located as
+	// close as possible to this cluster. Currently only zones are
+	// supported, so values should be of the form
+	// `projects/{project}/locations/{zone}`.
 	Location string `json:"location,omitempty"`
 
-	// Name: (`OutputOnly`)
-	// The unique name of the cluster. Values are of the
-	// form
-	// `projects/<project>/instances/<instance>/clusters/a-z*`.
+	// Name: The unique name of the cluster. Values are of the form
+	// `projects/{project}/instances/{instance}/clusters/a-z*`.
 	Name string `json:"name,omitempty"`
 
-	// ServeNodes: The number of nodes allocated to this cluster. More nodes
-	// enable higher
-	// throughput and more consistent performance.
+	// ServeNodes: Required. The number of nodes allocated to this cluster.
+	// More nodes enable higher throughput and more consistent performance.
 	ServeNodes int64 `json:"serveNodes,omitempty"`
 
-	// State: (`OutputOnly`)
-	// The current state of the cluster.
+	// State: Output only. The current state of the cluster.
 	//
 	// Possible values:
 	//   "STATE_NOT_KNOWN" - The state of the cluster could not be
@@ -162,20 +268,15 @@ type Cluster struct {
 	//   "READY" - The cluster has been successfully created and is ready to
 	// serve requests.
 	//   "CREATING" - The cluster is currently being created, and may be
-	// destroyed
-	// if the creation process encounters an error.
-	// A cluster may not be able to serve requests while being created.
+	// destroyed if the creation process encounters an error. A cluster may
+	// not be able to serve requests while being created.
 	//   "RESIZING" - The cluster is currently being resized, and may revert
-	// to its previous
-	// node count if the process encounters an error.
-	// A cluster is still capable of serving requests while being
-	// resized,
-	// but may exhibit performance as if its number of allocated nodes
-	// is
+	// to its previous node count if the process encounters an error. A
+	// cluster is still capable of serving requests while being resized, but
+	// may exhibit performance as if its number of allocated nodes is
 	// between the starting and requested states.
 	//   "DISABLED" - The cluster has no backing nodes. The data (tables)
-	// still
-	// exist, but no operations can be performed on the cluster.
+	// still exist, but no operations can be performed on the cluster.
 	State string `json:"state,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "DefaultStorageType")
@@ -202,6 +303,45 @@ func (s *Cluster) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// CreateBackupMetadata: Metadata type for the operation returned by
+// CreateBackup.
+type CreateBackupMetadata struct {
+	// EndTime: If set, the time at which this operation finished or was
+	// cancelled.
+	EndTime string `json:"endTime,omitempty"`
+
+	// Name: The name of the backup being created.
+	Name string `json:"name,omitempty"`
+
+	// SourceTable: The name of the table the backup is created from.
+	SourceTable string `json:"sourceTable,omitempty"`
+
+	// StartTime: The time at which this operation started.
+	StartTime string `json:"startTime,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "EndTime") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "EndTime") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *CreateBackupMetadata) MarshalJSON() ([]byte, error) {
+	type NoMethod CreateBackupMetadata
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // CreateClusterMetadata: The metadata for the Operation returned by
 // CreateCluster.
 type CreateClusterMetadata struct {
@@ -217,18 +357,11 @@ type CreateClusterMetadata struct {
 	RequestTime string `json:"requestTime,omitempty"`
 
 	// Tables: Keys: the full `name` of each table that existed in the
-	// instance when
-	// CreateCluster was first called,
-	// i.e.
-	// `projects/<project>/instances/<instance>/tables/<table>`. Any table
-	// added
-	// to the instance by a later API call will be created in the new
-	// cluster by
-	// that API call, not this one.
-	//
-	// Values: information on how much of a table's data has been copied to
-	// the
-	// newly-created cluster so far.
+	// instance when CreateCluster was first called, i.e.
+	// `projects//instances//tables/`. Any table added to the instance by a
+	// later API call will be created in the new cluster by that API call,
+	// not this one. Values: information on how much of a table's data has
+	// been copied to the newly-created cluster so far.
 	Tables map[string]TableProgress `json:"tables,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "FinishTime") to
@@ -257,21 +390,18 @@ func (s *CreateClusterMetadata) MarshalJSON() ([]byte, error) {
 // CreateClusterRequest: Request message for
 // BigtableInstanceAdmin.CreateCluster.
 type CreateClusterRequest struct {
-	// Cluster: The cluster to be created.
-	// Fields marked `OutputOnly` must be left blank.
+	// Cluster: Required. The cluster to be created. Fields marked
+	// `OutputOnly` must be left blank.
 	Cluster *Cluster `json:"cluster,omitempty"`
 
-	// ClusterId: The ID to be used when referring to the new cluster within
-	// its instance,
-	// e.g., just `mycluster` rather
-	// than
+	// ClusterId: Required. The ID to be used when referring to the new
+	// cluster within its instance, e.g., just `mycluster` rather than
 	// `projects/myproject/instances/myinstance/clusters/mycluster`.
 	ClusterId string `json:"clusterId,omitempty"`
 
-	// Parent: The unique name of the instance in which to create the new
-	// cluster.
-	// Values are of the form
-	// `projects/<project>/instances/<instance>`.
+	// Parent: Required. The unique name of the instance in which to create
+	// the new cluster. Values are of the form
+	// `projects/{project}/instances/{instance}`.
 	Parent string `json:"parent,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Cluster") to
@@ -337,30 +467,24 @@ func (s *CreateInstanceMetadata) MarshalJSON() ([]byte, error) {
 // CreateInstanceRequest: Request message for
 // BigtableInstanceAdmin.CreateInstance.
 type CreateInstanceRequest struct {
-	// Clusters: The clusters to be created within the instance, mapped by
-	// desired
-	// cluster ID, e.g., just `mycluster` rather
-	// than
-	// `projects/myproject/instances/myinstance/clusters/mycluster`.
-	// Fie
-	// lds marked `OutputOnly` must be left blank.
-	// Currently, at most two clusters can be specified.
+	// Clusters: Required. The clusters to be created within the instance,
+	// mapped by desired cluster ID, e.g., just `mycluster` rather than
+	// `projects/myproject/instances/myinstance/clusters/mycluster`. Fields
+	// marked `OutputOnly` must be left blank. Currently, at most four
+	// clusters can be specified.
 	Clusters map[string]Cluster `json:"clusters,omitempty"`
 
-	// Instance: The instance to create.
-	// Fields marked `OutputOnly` must be left blank.
+	// Instance: Required. The instance to create. Fields marked
+	// `OutputOnly` must be left blank.
 	Instance *Instance `json:"instance,omitempty"`
 
-	// InstanceId: The ID to be used when referring to the new instance
-	// within its project,
-	// e.g., just `myinstance` rather
-	// than
+	// InstanceId: Required. The ID to be used when referring to the new
+	// instance within its project, e.g., just `myinstance` rather than
 	// `projects/myproject/instances/myinstance`.
 	InstanceId string `json:"instanceId,omitempty"`
 
-	// Parent: The unique name of the project in which to create the new
-	// instance.
-	// Values are of the form `projects/<project>`.
+	// Parent: Required. The unique name of the project in which to create
+	// the new instance. Values are of the form `projects/{project}`.
 	Parent string `json:"parent,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Clusters") to
@@ -386,77 +510,110 @@ func (s *CreateInstanceRequest) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// Instance: A collection of Bigtable Tables and
-// the resources that serve them.
-// All tables in an instance are served from all
-// Clusters in the instance.
+// FailureTrace: Added to the error payload.
+type FailureTrace struct {
+	Frames []*Frame `json:"frames,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Frames") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Frames") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *FailureTrace) MarshalJSON() ([]byte, error) {
+	type NoMethod FailureTrace
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type Frame struct {
+	TargetName string `json:"targetName,omitempty"`
+
+	WorkflowGuid string `json:"workflowGuid,omitempty"`
+
+	ZoneId string `json:"zoneId,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "TargetName") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "TargetName") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *Frame) MarshalJSON() ([]byte, error) {
+	type NoMethod Frame
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// Instance: A collection of Bigtable Tables and the resources that
+// serve them. All tables in an instance are served from all Clusters in
+// the instance.
 type Instance struct {
-	// DisplayName: The descriptive name for this instance as it appears in
-	// UIs.
-	// Can be changed at any time, but should be kept globally unique
-	// to avoid confusion.
+	// DisplayName: Required. The descriptive name for this instance as it
+	// appears in UIs. Can be changed at any time, but should be kept
+	// globally unique to avoid confusion.
 	DisplayName string `json:"displayName,omitempty"`
 
-	// Labels: Labels are a flexible and lightweight mechanism for
-	// organizing cloud
-	// resources into groups that reflect a customer's organizational needs
-	// and
-	// deployment strategies. They can be used to filter resources and
-	// aggregate
-	// metrics.
-	//
-	// * Label keys must be between 1 and 63 characters long and must
-	// conform to
-	//   the regular expression: `\p{Ll}\p{Lo}{0,62}`.
-	// * Label values must be between 0 and 63 characters long and must
-	// conform to
-	//   the regular expression: `[\p{Ll}\p{Lo}\p{N}_-]{0,63}`.
-	// * No more than 64 labels can be associated with a given resource.
-	// * Keys and values must both be under 128 bytes.
+	// Labels: Required. Labels are a flexible and lightweight mechanism for
+	// organizing cloud resources into groups that reflect a customer's
+	// organizational needs and deployment strategies. They can be used to
+	// filter resources and aggregate metrics. * Label keys must be between
+	// 1 and 63 characters long and must conform to the regular expression:
+	// `\p{Ll}\p{Lo}{0,62}`. * Label values must be between 0 and 63
+	// characters long and must conform to the regular expression:
+	// `[\p{Ll}\p{Lo}\p{N}_-]{0,63}`. * No more than 64 labels can be
+	// associated with a given resource. * Keys and values must both be
+	// under 128 bytes.
 	Labels map[string]string `json:"labels,omitempty"`
 
-	// Name: (`OutputOnly`)
-	// The unique name of the instance. Values are of the
-	// form
-	// `projects/<project>/instances/a-z+[a-z0-9]`.
+	// Name: The unique name of the instance. Values are of the form
+	// `projects/{project}/instances/a-z+[a-z0-9]`.
 	Name string `json:"name,omitempty"`
 
-	// State: (`OutputOnly`)
-	// The current state of the instance.
+	// State: Output only. The current state of the instance.
 	//
 	// Possible values:
 	//   "STATE_NOT_KNOWN" - The state of the instance could not be
 	// determined.
 	//   "READY" - The instance has been successfully created and can serve
-	// requests
-	// to its tables.
+	// requests to its tables.
 	//   "CREATING" - The instance is currently being created, and may be
-	// destroyed
-	// if the creation process encounters an error.
+	// destroyed if the creation process encounters an error.
 	State string `json:"state,omitempty"`
 
-	// Type: The type of the instance. Defaults to `PRODUCTION`.
+	// Type: Required. The type of the instance. Defaults to `PRODUCTION`.
 	//
 	// Possible values:
 	//   "TYPE_UNSPECIFIED" - The type of the instance is unspecified. If
-	// set when creating an
-	// instance, a `PRODUCTION` instance will be created. If set when
-	// updating
-	// an instance, the type will be left unchanged.
+	// set when creating an instance, a `PRODUCTION` instance will be
+	// created. If set when updating an instance, the type will be left
+	// unchanged.
 	//   "PRODUCTION" - An instance meant for production use. `serve_nodes`
-	// must be set
-	// on the cluster.
-	//   "DEVELOPMENT" - The instance is meant for development and testing
-	// purposes only; it has
-	// no performance or uptime guarantees and is not covered by SLA.
-	// After a development instance is created, it can be upgraded
-	// by
-	// updating the instance to type `PRODUCTION`. An instance created
-	// as a production instance cannot be changed to a development
-	// instance.
-	// When creating a development instance, `serve_nodes` on the cluster
-	// must
-	// not be set.
+	// must be set on the cluster.
+	//   "DEVELOPMENT" - DEPRECATED: Prefer PRODUCTION for all use cases, as
+	// it no longer enforces a higher minimum node count than DEVELOPMENT.
 	Type string `json:"type,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "DisplayName") to
@@ -482,16 +639,87 @@ func (s *Instance) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// OperationProgress: Encapsulates progress related information for a
+// Cloud Bigtable long running operation.
+type OperationProgress struct {
+	// EndTime: If set, the time at which this operation failed or was
+	// completed successfully.
+	EndTime string `json:"endTime,omitempty"`
+
+	// ProgressPercent: Percent completion of the operation. Values are
+	// between 0 and 100 inclusive.
+	ProgressPercent int64 `json:"progressPercent,omitempty"`
+
+	// StartTime: Time the request was received.
+	StartTime string `json:"startTime,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "EndTime") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "EndTime") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *OperationProgress) MarshalJSON() ([]byte, error) {
+	type NoMethod OperationProgress
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// OptimizeRestoredTableMetadata: Metadata type for the long-running
+// operation used to track the progress of optimizations performed on a
+// newly restored table. This long-running operation is automatically
+// created by the system after the successful completion of a table
+// restore, and cannot be cancelled.
+type OptimizeRestoredTableMetadata struct {
+	// Name: Name of the restored table being optimized.
+	Name string `json:"name,omitempty"`
+
+	// Progress: The progress of the post-restore optimizations.
+	Progress *OperationProgress `json:"progress,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Name") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Name") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *OptimizeRestoredTableMetadata) MarshalJSON() ([]byte, error) {
+	type NoMethod OptimizeRestoredTableMetadata
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // PartialUpdateInstanceRequest: Request message for
 // BigtableInstanceAdmin.PartialUpdateInstance.
 type PartialUpdateInstanceRequest struct {
-	// Instance: The Instance which will (partially) replace the current
-	// value.
+	// Instance: Required. The Instance which will (partially) replace the
+	// current value.
 	Instance *Instance `json:"instance,omitempty"`
 
-	// UpdateMask: The subset of Instance fields which should be
-	// replaced.
-	// Must be explicitly set.
+	// UpdateMask: Required. The subset of Instance fields which should be
+	// replaced. Must be explicitly set.
 	UpdateMask string `json:"updateMask,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Instance") to
@@ -517,14 +745,64 @@ func (s *PartialUpdateInstanceRequest) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// RestoreTableMetadata: Metadata type for the long-running operation
+// returned by RestoreTable.
+type RestoreTableMetadata struct {
+	BackupInfo *BackupInfo `json:"backupInfo,omitempty"`
+
+	// Name: Name of the table being created and restored to.
+	Name string `json:"name,omitempty"`
+
+	// OptimizeTableOperationName: If exists, the name of the long-running
+	// operation that will be used to track the post-restore optimization
+	// process to optimize the performance of the restored table. The
+	// metadata type of the long-running operation is
+	// OptimizeRestoreTableMetadata. The response type is Empty. This
+	// long-running operation may be automatically created by the system if
+	// applicable after the RestoreTable long-running operation completes
+	// successfully. This operation may not be created if the table is
+	// already optimized or the restore was not successful.
+	OptimizeTableOperationName string `json:"optimizeTableOperationName,omitempty"`
+
+	// Progress: The progress of the RestoreTable operation.
+	Progress *OperationProgress `json:"progress,omitempty"`
+
+	// SourceType: The type of the restore source.
+	//
+	// Possible values:
+	//   "RESTORE_SOURCE_TYPE_UNSPECIFIED" - No restore associated.
+	//   "BACKUP" - A backup was used as the source of the restore.
+	SourceType string `json:"sourceType,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "BackupInfo") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "BackupInfo") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *RestoreTableMetadata) MarshalJSON() ([]byte, error) {
+	type NoMethod RestoreTableMetadata
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // TableProgress: Progress info for copying a table's data to the new
 // cluster.
 type TableProgress struct {
 	// EstimatedCopiedBytes: Estimate of the number of bytes copied so far
-	// for this table.
-	// This will eventually reach 'estimated_size_bytes' unless the table
-	// copy
-	// is CANCELLED.
+	// for this table. This will eventually reach 'estimated_size_bytes'
+	// unless the table copy is CANCELLED.
 	EstimatedCopiedBytes int64 `json:"estimatedCopiedBytes,omitempty,string"`
 
 	// EstimatedSizeBytes: Estimate of the size of the table to be copied.
@@ -536,10 +814,8 @@ type TableProgress struct {
 	//   "COPYING" - The table is actively being copied to the new cluster.
 	//   "COMPLETED" - The table has been fully copied to the new cluster.
 	//   "CANCELLED" - The table was deleted before it finished copying to
-	// the new cluster.
-	// Note that tables deleted after completion will stay marked
-	// as
-	// COMPLETED, not CANCELLED.
+	// the new cluster. Note that tables deleted after completion will stay
+	// marked as COMPLETED, not CANCELLED.
 	State string `json:"state,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g.

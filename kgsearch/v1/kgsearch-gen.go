@@ -1,4 +1,4 @@
-// Copyright 2019 Google LLC.
+// Copyright 2020 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -49,9 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
 	option "google.golang.org/api/option"
+	internaloption "google.golang.org/api/option/internaloption"
 	htransport "google.golang.org/api/transport/http"
 )
 
@@ -68,14 +69,18 @@ var _ = googleapi.Version
 var _ = errors.New
 var _ = strings.Replace
 var _ = context.Canceled
+var _ = internaloption.WithDefaultEndpoint
 
 const apiId = "kgsearch:v1"
 const apiName = "kgsearch"
 const apiVersion = "v1"
 const basePath = "https://kgsearch.googleapis.com/"
+const mtlsBasePath = "https://kgsearch.mtls.googleapis.com/"
 
 // NewService creates a new Service.
 func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	opts = append(opts, internaloption.WithDefaultEndpoint(basePath))
+	opts = append(opts, internaloption.WithDefaultMTLSEndpoint(mtlsBasePath))
 	client, endpoint, err := htransport.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -129,8 +134,7 @@ type EntitiesService struct {
 }
 
 // SearchResponse: Response message includes the context and a list of
-// matching results
-// which contain the detail of associated entities.
+// matching results which contain the detail of associated entities.
 type SearchResponse struct {
 
 	// ItemListElement: The item list of search results.
@@ -175,20 +179,17 @@ type EntitiesSearchCall struct {
 }
 
 // Search: Searches Knowledge Graph for entities that match the
-// constraints.
-// A list of matched entities will be returned in response, which will
-// be in
-// JSON-LD format and compatible with http://schema.org
+// constraints. A list of matched entities will be returned in response,
+// which will be in JSON-LD format and compatible with http://schema.org
 func (r *EntitiesService) Search() *EntitiesSearchCall {
 	c := &EntitiesSearchCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	return c
 }
 
 // Ids sets the optional parameter "ids": The list of entity id to be
-// used for search instead of query string.
-// To specify multiple ids in the HTTP request, repeat the parameter in
-// the
-// URL as in ...?ids=A&ids=B
+// used for search instead of query string. To specify multiple ids in
+// the HTTP request, repeat the parameter in the URL as in
+// ...?ids=A&ids=B
 func (c *EntitiesSearchCall) Ids(ids ...string) *EntitiesSearchCall {
 	c.urlParams_.SetMulti("ids", append([]string{}, ids...))
 	return c
@@ -202,8 +203,7 @@ func (c *EntitiesSearchCall) Indent(indent bool) *EntitiesSearchCall {
 }
 
 // Languages sets the optional parameter "languages": The list of
-// language codes (defined in ISO 693) to run the query with,
-// e.g. 'en'.
+// language codes (defined in ISO 693) to run the query with, e.g. 'en'.
 func (c *EntitiesSearchCall) Languages(languages ...string) *EntitiesSearchCall {
 	c.urlParams_.SetMulti("languages", append([]string{}, languages...))
 	return c
@@ -231,10 +231,9 @@ func (c *EntitiesSearchCall) Query(query string) *EntitiesSearchCall {
 }
 
 // Types sets the optional parameter "types": Restricts returned
-// entities with these types, e.g. Person
-// (as defined in http://schema.org/Person). If multiple types are
-// specified,
-// returned entities will contain one or more of these types.
+// entities with these types, e.g. Person (as defined in
+// http://schema.org/Person). If multiple types are specified, returned
+// entities will contain one or more of these types.
 func (c *EntitiesSearchCall) Types(types ...string) *EntitiesSearchCall {
 	c.urlParams_.SetMulti("types", append([]string{}, types...))
 	return c
@@ -277,7 +276,7 @@ func (c *EntitiesSearchCall) Header() http.Header {
 
 func (c *EntitiesSearchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -336,14 +335,14 @@ func (c *EntitiesSearchCall) Do(opts ...googleapi.CallOption) (*SearchResponse, 
 	}
 	return ret, nil
 	// {
-	//   "description": "Searches Knowledge Graph for entities that match the constraints.\nA list of matched entities will be returned in response, which will be in\nJSON-LD format and compatible with http://schema.org",
+	//   "description": "Searches Knowledge Graph for entities that match the constraints. A list of matched entities will be returned in response, which will be in JSON-LD format and compatible with http://schema.org",
 	//   "flatPath": "v1/entities:search",
 	//   "httpMethod": "GET",
 	//   "id": "kgsearch.entities.search",
 	//   "parameterOrder": [],
 	//   "parameters": {
 	//     "ids": {
-	//       "description": "The list of entity id to be used for search instead of query string.\nTo specify multiple ids in the HTTP request, repeat the parameter in the\nURL as in ...?ids=A\u0026ids=B",
+	//       "description": "The list of entity id to be used for search instead of query string. To specify multiple ids in the HTTP request, repeat the parameter in the URL as in ...?ids=A\u0026ids=B",
 	//       "location": "query",
 	//       "repeated": true,
 	//       "type": "string"
@@ -354,7 +353,7 @@ func (c *EntitiesSearchCall) Do(opts ...googleapi.CallOption) (*SearchResponse, 
 	//       "type": "boolean"
 	//     },
 	//     "languages": {
-	//       "description": "The list of language codes (defined in ISO 693) to run the query with,\ne.g. 'en'.",
+	//       "description": "The list of language codes (defined in ISO 693) to run the query with, e.g. 'en'.",
 	//       "location": "query",
 	//       "repeated": true,
 	//       "type": "string"
@@ -376,7 +375,7 @@ func (c *EntitiesSearchCall) Do(opts ...googleapi.CallOption) (*SearchResponse, 
 	//       "type": "string"
 	//     },
 	//     "types": {
-	//       "description": "Restricts returned entities with these types, e.g. Person\n(as defined in http://schema.org/Person). If multiple types are specified,\nreturned entities will contain one or more of these types.",
+	//       "description": "Restricts returned entities with these types, e.g. Person (as defined in http://schema.org/Person). If multiple types are specified, returned entities will contain one or more of these types.",
 	//       "location": "query",
 	//       "repeated": true,
 	//       "type": "string"

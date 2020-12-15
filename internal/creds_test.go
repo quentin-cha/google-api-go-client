@@ -1,16 +1,6 @@
-// Copyright 2017 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2017 Google LLC.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 
 package internal
 
@@ -47,7 +37,7 @@ func TestTokenSource(t *testing.T) {
 	// TODO(jba): make this an error?
 	ds = &DialSettings{
 		TokenSource:     ts,
-		CredentialsFile: "service-account.json",
+		CredentialsFile: "testdata/service-account.json",
 	}
 	got, err = Creds(ctx, ds)
 	if err != nil {
@@ -64,7 +54,7 @@ func TestDefaultServiceAccount(t *testing.T) {
 
 	// Load a valid JSON file. No way to really test the contents; we just
 	// verify that there is no error.
-	ds := &DialSettings{CredentialsFile: "service-account.json"}
+	ds := &DialSettings{CredentialsFile: "testdata/service-account.json"}
 	if _, err := Creds(ctx, ds); err != nil {
 		t.Errorf("got %v, wanted no error", err)
 	}
@@ -82,7 +72,7 @@ func TestJWTWithAudience(t *testing.T) {
 
 	// Load a valid JSON file. No way to really test the contents; we just
 	// verify that there is no error.
-	ds := &DialSettings{CredentialsFile: "service-account.json", Audiences: []string{"foo"}}
+	ds := &DialSettings{CredentialsFile: "testdata/service-account.json", Audiences: []string{"foo"}}
 	if _, err := Creds(ctx, ds); err != nil {
 		t.Errorf("got %v, wanted no error", err)
 	}
@@ -100,7 +90,7 @@ func TestOAuth(t *testing.T) {
 
 	// Load a valid JSON file. No way to really test the contents; we just
 	// verify that there is no error.
-	ds := &DialSettings{CredentialsFile: "service-account.json", Scopes: []string{"foo"}}
+	ds := &DialSettings{CredentialsFile: "testdata/service-account.json", Scopes: []string{"foo"}}
 	if _, err := Creds(ctx, ds); err != nil {
 		t.Errorf("got %v, wanted no error", err)
 	}
@@ -125,3 +115,29 @@ const validServiceAccountJSON = `{
   "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
   "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/dumba-504%40appspot.gserviceaccount.com"
 }`
+
+func TestQuotaProjectFromCreds(t *testing.T) {
+	ctx := context.Background()
+
+	cred, err := credentialsFromJSON(ctx, []byte(validServiceAccountJSON), &DialSettings{Endpoint: "foo.googleapis.com"})
+	if err != nil {
+		t.Fatalf("got %v, wanted no error", err)
+	}
+	if want, got := "", QuotaProjectFromCreds(cred); want != got {
+		t.Errorf("QuotaProjectFromCreds(validServiceAccountJSON): want %q, got %q", want, got)
+	}
+
+	quotaProjectJSON := []byte(`
+{
+	"type": "authorized_user",
+	"quota_project_id": "foobar"
+}`)
+
+	cred, err = credentialsFromJSON(ctx, []byte(quotaProjectJSON), &DialSettings{Endpoint: "foo.googleapis.com"})
+	if err != nil {
+		t.Fatalf("got %v, wanted no error", err)
+	}
+	if want, got := "foobar", QuotaProjectFromCreds(cred); want != got {
+		t.Errorf("QuotaProjectFromCreds(quotaProjectJSON): want %q, got %q", want, got)
+	}
+}

@@ -1,4 +1,4 @@
-// Copyright 2019 Google LLC.
+// Copyright 2020 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -55,9 +55,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
 	option "google.golang.org/api/option"
+	internaloption "google.golang.org/api/option/internaloption"
 	htransport "google.golang.org/api/transport/http"
 )
 
@@ -74,11 +75,13 @@ var _ = googleapi.Version
 var _ = errors.New
 var _ = strings.Replace
 var _ = context.Canceled
+var _ = internaloption.WithDefaultEndpoint
 
 const apiId = "datastore:v1beta1"
 const apiName = "datastore"
 const apiVersion = "v1beta1"
 const basePath = "https://datastore.googleapis.com/"
+const mtlsBasePath = "https://datastore.mtls.googleapis.com/"
 
 // OAuth2 scopes used by this API.
 const (
@@ -97,6 +100,8 @@ func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, err
 	)
 	// NOTE: prepend, so we don't override user-specified scopes.
 	opts = append([]option.ClientOption{scopesOption}, opts...)
+	opts = append(opts, internaloption.WithDefaultEndpoint(basePath))
+	opts = append(opts, internaloption.WithDefaultMTLSEndpoint(mtlsBasePath))
 	client, endpoint, err := htransport.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -157,12 +162,10 @@ type GoogleDatastoreAdminV1CommonMetadata struct {
 	EndTime string `json:"endTime,omitempty"`
 
 	// Labels: The client-assigned labels which were provided when the
-	// operation was
-	// created. May also include additional labels.
+	// operation was created. May also include additional labels.
 	Labels map[string]string `json:"labels,omitempty"`
 
-	// OperationType: The type of the operation. Can be used as a filter
-	// in
+	// OperationType: The type of the operation. Can be used as a filter in
 	// ListOperationsRequest.
 	//
 	// Possible values:
@@ -183,16 +186,15 @@ type GoogleDatastoreAdminV1CommonMetadata struct {
 	//   "INITIALIZING" - Request is being prepared for processing.
 	//   "PROCESSING" - Request is actively being processed.
 	//   "CANCELLING" - Request is in the process of being cancelled after
-	// user called
-	// google.longrunning.Operations.CancelOperation on the operation.
+	// user called google.longrunning.Operations.CancelOperation on the
+	// operation.
 	//   "FINALIZING" - Request has been processed and is in its
 	// finalization stage.
 	//   "SUCCESSFUL" - Request has completed successfully.
 	//   "FAILED" - Request has finished being processed, but encountered an
 	// error.
 	//   "CANCELLED" - Request has finished being cancelled after user
-	// called
-	// google.longrunning.Operations.CancelOperation.
+	// called google.longrunning.Operations.CancelOperation.
 	State string `json:"state,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "EndTime") to
@@ -219,40 +221,24 @@ func (s *GoogleDatastoreAdminV1CommonMetadata) MarshalJSON() ([]byte, error) {
 }
 
 // GoogleDatastoreAdminV1EntityFilter: Identifies a subset of entities
-// in a project. This is specified as
-// combinations of kinds and namespaces (either or both of which may be
-// all, as
-// described in the following examples).
-// Example usage:
-//
-// Entire project:
-//   kinds=[], namespace_ids=[]
-//
-// Kinds Foo and Bar in all namespaces:
-//   kinds=['Foo', 'Bar'], namespace_ids=[]
-//
-// Kinds Foo and Bar only in the default namespace:
-//   kinds=['Foo', 'Bar'], namespace_ids=['']
-//
-// Kinds Foo and Bar in both the default and Baz namespaces:
-//   kinds=['Foo', 'Bar'], namespace_ids=['', 'Baz']
-//
-// The entire Baz namespace:
-//   kinds=[], namespace_ids=['Baz']
+// in a project. This is specified as combinations of kinds and
+// namespaces (either or both of which may be all, as described in the
+// following examples). Example usage: Entire project: kinds=[],
+// namespace_ids=[] Kinds Foo and Bar in all namespaces: kinds=['Foo',
+// 'Bar'], namespace_ids=[] Kinds Foo and Bar only in the default
+// namespace: kinds=['Foo', 'Bar'], namespace_ids=[''] Kinds Foo and Bar
+// in both the default and Baz namespaces: kinds=['Foo', 'Bar'],
+// namespace_ids=['', 'Baz'] The entire Baz namespace: kinds=[],
+// namespace_ids=['Baz']
 type GoogleDatastoreAdminV1EntityFilter struct {
 	// Kinds: If empty, then this represents all kinds.
 	Kinds []string `json:"kinds,omitempty"`
 
 	// NamespaceIds: An empty list represents all namespaces. This is the
-	// preferred
-	// usage for projects that don't use namespaces.
-	//
-	// An empty string element represents the default namespace. This should
-	// be
-	// used if the project has data in non-default namespaces, but doesn't
-	// want to
-	// include them.
-	// Each namespace in this list must be unique.
+	// preferred usage for projects that don't use namespaces. An empty
+	// string element represents the default namespace. This should be used
+	// if the project has data in non-default namespaces, but doesn't want
+	// to include them. Each namespace in this list must be unique.
 	NamespaceIds []string `json:"namespaceIds,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Kinds") to
@@ -288,13 +274,9 @@ type GoogleDatastoreAdminV1ExportEntitiesMetadata struct {
 	EntityFilter *GoogleDatastoreAdminV1EntityFilter `json:"entityFilter,omitempty"`
 
 	// OutputUrlPrefix: Location for the export metadata and data files.
-	// This will be the same
-	// value as
-	// the
+	// This will be the same value as the
 	// google.datastore.admin.v1.ExportEntitiesRequest.output_url_prefix
-	//
-	// field. The final output location is provided
-	// in
+	// field. The final output location is provided in
 	// google.datastore.admin.v1.ExportEntitiesResponse.output_url.
 	OutputUrlPrefix string `json:"outputUrlPrefix,omitempty"`
 
@@ -327,16 +309,14 @@ func (s *GoogleDatastoreAdminV1ExportEntitiesMetadata) MarshalJSON() ([]byte, er
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// GoogleDatastoreAdminV1ExportEntitiesResponse: The response
-// for
+// GoogleDatastoreAdminV1ExportEntitiesResponse: The response for
 // google.datastore.admin.v1.DatastoreAdmin.ExportEntities.
 type GoogleDatastoreAdminV1ExportEntitiesResponse struct {
 	// OutputUrl: Location of the output metadata file. This can be used to
-	// begin an import
-	// into Cloud Datastore (this project or another project).
-	// See
-	// google.datastore.admin.v1.ImportEntitiesRequest.input_url.
-	// Only present if the operation completed successfully.
+	// begin an import into Cloud Datastore (this project or another
+	// project). See
+	// google.datastore.admin.v1.ImportEntitiesRequest.input_url. Only
+	// present if the operation completed successfully.
 	OutputUrl string `json:"outputUrl,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "OutputUrl") to
@@ -372,9 +352,8 @@ type GoogleDatastoreAdminV1ImportEntitiesMetadata struct {
 	EntityFilter *GoogleDatastoreAdminV1EntityFilter `json:"entityFilter,omitempty"`
 
 	// InputUrl: The location of the import metadata file. This will be the
-	// same value as
-	// the google.datastore.admin.v1.ExportEntitiesResponse.output_url
-	// field.
+	// same value as the
+	// google.datastore.admin.v1.ExportEntitiesResponse.output_url field.
 	InputUrl string `json:"inputUrl,omitempty"`
 
 	// ProgressBytes: An estimate of the number of bytes processed.
@@ -445,13 +424,11 @@ func (s *GoogleDatastoreAdminV1IndexOperationMetadata) MarshalJSON() ([]byte, er
 // metric.
 type GoogleDatastoreAdminV1Progress struct {
 	// WorkCompleted: The amount of work that has been completed. Note that
-	// this may be greater
-	// than work_estimated.
+	// this may be greater than work_estimated.
 	WorkCompleted int64 `json:"workCompleted,omitempty,string"`
 
 	// WorkEstimated: An estimate of how much work needs to be performed.
-	// May be zero if the
-	// work estimate is unavailable.
+	// May be zero if the work estimate is unavailable.
 	WorkEstimated int64 `json:"workEstimated,omitempty,string"`
 
 	// ForceSendFields is a list of field names (e.g. "WorkCompleted") to
@@ -485,12 +462,10 @@ type GoogleDatastoreAdminV1beta1CommonMetadata struct {
 	EndTime string `json:"endTime,omitempty"`
 
 	// Labels: The client-assigned labels which were provided when the
-	// operation was
-	// created. May also include additional labels.
+	// operation was created. May also include additional labels.
 	Labels map[string]string `json:"labels,omitempty"`
 
-	// OperationType: The type of the operation. Can be used as a filter
-	// in
+	// OperationType: The type of the operation. Can be used as a filter in
 	// ListOperationsRequest.
 	//
 	// Possible values:
@@ -509,16 +484,15 @@ type GoogleDatastoreAdminV1beta1CommonMetadata struct {
 	//   "INITIALIZING" - Request is being prepared for processing.
 	//   "PROCESSING" - Request is actively being processed.
 	//   "CANCELLING" - Request is in the process of being cancelled after
-	// user called
-	// google.longrunning.Operations.CancelOperation on the operation.
+	// user called google.longrunning.Operations.CancelOperation on the
+	// operation.
 	//   "FINALIZING" - Request has been processed and is in its
 	// finalization stage.
 	//   "SUCCESSFUL" - Request has completed successfully.
 	//   "FAILED" - Request has finished being processed, but encountered an
 	// error.
 	//   "CANCELLED" - Request has finished being cancelled after user
-	// called
-	// google.longrunning.Operations.CancelOperation.
+	// called google.longrunning.Operations.CancelOperation.
 	State string `json:"state,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "EndTime") to
@@ -545,40 +519,24 @@ func (s *GoogleDatastoreAdminV1beta1CommonMetadata) MarshalJSON() ([]byte, error
 }
 
 // GoogleDatastoreAdminV1beta1EntityFilter: Identifies a subset of
-// entities in a project. This is specified as
-// combinations of kinds and namespaces (either or both of which may be
-// all, as
-// described in the following examples).
-// Example usage:
-//
-// Entire project:
-//   kinds=[], namespace_ids=[]
-//
-// Kinds Foo and Bar in all namespaces:
-//   kinds=['Foo', 'Bar'], namespace_ids=[]
-//
-// Kinds Foo and Bar only in the default namespace:
-//   kinds=['Foo', 'Bar'], namespace_ids=['']
-//
-// Kinds Foo and Bar in both the default and Baz namespaces:
-//   kinds=['Foo', 'Bar'], namespace_ids=['', 'Baz']
-//
-// The entire Baz namespace:
-//   kinds=[], namespace_ids=['Baz']
+// entities in a project. This is specified as combinations of kinds and
+// namespaces (either or both of which may be all, as described in the
+// following examples). Example usage: Entire project: kinds=[],
+// namespace_ids=[] Kinds Foo and Bar in all namespaces: kinds=['Foo',
+// 'Bar'], namespace_ids=[] Kinds Foo and Bar only in the default
+// namespace: kinds=['Foo', 'Bar'], namespace_ids=[''] Kinds Foo and Bar
+// in both the default and Baz namespaces: kinds=['Foo', 'Bar'],
+// namespace_ids=['', 'Baz'] The entire Baz namespace: kinds=[],
+// namespace_ids=['Baz']
 type GoogleDatastoreAdminV1beta1EntityFilter struct {
 	// Kinds: If empty, then this represents all kinds.
 	Kinds []string `json:"kinds,omitempty"`
 
 	// NamespaceIds: An empty list represents all namespaces. This is the
-	// preferred
-	// usage for projects that don't use namespaces.
-	//
-	// An empty string element represents the default namespace. This should
-	// be
-	// used if the project has data in non-default namespaces, but doesn't
-	// want to
-	// include them.
-	// Each namespace in this list must be unique.
+	// preferred usage for projects that don't use namespaces. An empty
+	// string element represents the default namespace. This should be used
+	// if the project has data in non-default namespaces, but doesn't want
+	// to include them. Each namespace in this list must be unique.
 	NamespaceIds []string `json:"namespaceIds,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Kinds") to
@@ -614,13 +572,9 @@ type GoogleDatastoreAdminV1beta1ExportEntitiesMetadata struct {
 	EntityFilter *GoogleDatastoreAdminV1beta1EntityFilter `json:"entityFilter,omitempty"`
 
 	// OutputUrlPrefix: Location for the export metadata and data files.
-	// This will be the same
-	// value as
-	// the
-	// google.datastore.admin.v1beta1.ExportEntitiesRequest.output_url_pr
-	// efix
-	// field. The final output location is provided
-	// in
+	// This will be the same value as the
+	// google.datastore.admin.v1beta1.ExportEntitiesRequest.output_url_prefix
+	//  field. The final output location is provided in
 	// google.datastore.admin.v1beta1.ExportEntitiesResponse.output_url.
 	OutputUrlPrefix string `json:"outputUrlPrefix,omitempty"`
 
@@ -653,8 +607,7 @@ func (s *GoogleDatastoreAdminV1beta1ExportEntitiesMetadata) MarshalJSON() ([]byt
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// GoogleDatastoreAdminV1beta1ExportEntitiesRequest: The request
-// for
+// GoogleDatastoreAdminV1beta1ExportEntitiesRequest: The request for
 // google.datastore.admin.v1beta1.DatastoreAdmin.ExportEntities.
 type GoogleDatastoreAdminV1beta1ExportEntitiesRequest struct {
 	// EntityFilter: Description of what data from the project is included
@@ -664,37 +617,22 @@ type GoogleDatastoreAdminV1beta1ExportEntitiesRequest struct {
 	// Labels: Client-assigned labels.
 	Labels map[string]string `json:"labels,omitempty"`
 
-	// OutputUrlPrefix: Location for the export metadata and data
-	// files.
-	//
-	// The full resource URL of the external storage location. Currently,
-	// only
+	// OutputUrlPrefix: Location for the export metadata and data files. The
+	// full resource URL of the external storage location. Currently, only
 	// Google Cloud Storage is supported. So output_url_prefix should be of
-	// the
-	// form: `gs://BUCKET_NAME[/NAMESPACE_PATH]`, where `BUCKET_NAME` is
-	// the
-	// name of the Cloud Storage bucket and `NAMESPACE_PATH` is an optional
-	// Cloud
-	// Storage namespace path (this is not a Cloud Datastore namespace). For
-	// more
-	// information about Cloud Storage namespace paths, see
-	// [Object
-	// name
-	// considerations](https://cloud.google.com/storage/docs/naming#obje
-	// ct-considerations).
-	//
-	// The resulting files will be nested deeper than the specified URL
-	// prefix.
-	// The final output URL will be provided in
-	// the
+	// the form: `gs://BUCKET_NAME[/NAMESPACE_PATH]`, where `BUCKET_NAME` is
+	// the name of the Cloud Storage bucket and `NAMESPACE_PATH` is an
+	// optional Cloud Storage namespace path (this is not a Cloud Datastore
+	// namespace). For more information about Cloud Storage namespace paths,
+	// see [Object name
+	// considerations](https://cloud.google.com/storage/docs/naming#object-co
+	// nsiderations). The resulting files will be nested deeper than the
+	// specified URL prefix. The final output URL will be provided in the
 	// google.datastore.admin.v1beta1.ExportEntitiesResponse.output_url
-	// f
-	// ield. That value should be used for subsequent ImportEntities
-	// operations.
-	//
-	// By nesting the data files deeper, the same Cloud Storage bucket can
-	// be used
-	// in multiple ExportEntities operations without conflict.
+	// field. That value should be used for subsequent ImportEntities
+	// operations. By nesting the data files deeper, the same Cloud Storage
+	// bucket can be used in multiple ExportEntities operations without
+	// conflict.
 	OutputUrlPrefix string `json:"outputUrlPrefix,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "EntityFilter") to
@@ -720,17 +658,14 @@ func (s *GoogleDatastoreAdminV1beta1ExportEntitiesRequest) MarshalJSON() ([]byte
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// GoogleDatastoreAdminV1beta1ExportEntitiesResponse: The response
-// for
+// GoogleDatastoreAdminV1beta1ExportEntitiesResponse: The response for
 // google.datastore.admin.v1beta1.DatastoreAdmin.ExportEntities.
 type GoogleDatastoreAdminV1beta1ExportEntitiesResponse struct {
 	// OutputUrl: Location of the output metadata file. This can be used to
-	// begin an import
-	// into Cloud Datastore (this project or another project).
-	// See
-	// google.datastore.admin.v1beta1.ImportEntitiesRequest.input_url.
-	// On
-	// ly present if the operation completed successfully.
+	// begin an import into Cloud Datastore (this project or another
+	// project). See
+	// google.datastore.admin.v1beta1.ImportEntitiesRequest.input_url. Only
+	// present if the operation completed successfully.
 	OutputUrl string `json:"outputUrl,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "OutputUrl") to
@@ -766,11 +701,9 @@ type GoogleDatastoreAdminV1beta1ImportEntitiesMetadata struct {
 	EntityFilter *GoogleDatastoreAdminV1beta1EntityFilter `json:"entityFilter,omitempty"`
 
 	// InputUrl: The location of the import metadata file. This will be the
-	// same value as
-	// the
+	// same value as the
 	// google.datastore.admin.v1beta1.ExportEntitiesResponse.output_url
-	// field
-	// .
+	// field.
 	InputUrl string `json:"inputUrl,omitempty"`
 
 	// ProgressBytes: An estimate of the number of bytes processed.
@@ -802,41 +735,28 @@ func (s *GoogleDatastoreAdminV1beta1ImportEntitiesMetadata) MarshalJSON() ([]byt
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// GoogleDatastoreAdminV1beta1ImportEntitiesRequest: The request
-// for
+// GoogleDatastoreAdminV1beta1ImportEntitiesRequest: The request for
 // google.datastore.admin.v1beta1.DatastoreAdmin.ImportEntities.
 type GoogleDatastoreAdminV1beta1ImportEntitiesRequest struct {
 	// EntityFilter: Optionally specify which kinds/namespaces are to be
-	// imported. If provided,
-	// the list must be a subset of the EntityFilter used in creating the
-	// export,
-	// otherwise a FAILED_PRECONDITION error will be returned. If no filter
-	// is
-	// specified then all entities from the export are imported.
+	// imported. If provided, the list must be a subset of the EntityFilter
+	// used in creating the export, otherwise a FAILED_PRECONDITION error
+	// will be returned. If no filter is specified then all entities from
+	// the export are imported.
 	EntityFilter *GoogleDatastoreAdminV1beta1EntityFilter `json:"entityFilter,omitempty"`
 
 	// InputUrl: The full resource URL of the external storage location.
-	// Currently, only
-	// Google Cloud Storage is supported. So input_url should be of the
-	// form:
-	// `gs://BUCKET_NAME[/NAMESPACE_PATH]/OVERALL_EXPORT_METADATA_FILE`
-	// , where
-	// `BUCKET_NAME` is the name of the Cloud Storage bucket,
-	// `NAMESPACE_PATH` is
-	// an optional Cloud Storage namespace path (this is not a Cloud
-	// Datastore
-	// namespace), and `OVERALL_EXPORT_METADATA_FILE` is the metadata file
-	// written
-	// by the ExportEntities operation. For more information about Cloud
-	// Storage
-	// namespace paths, see
-	// [Object
+	// Currently, only Google Cloud Storage is supported. So input_url
+	// should be of the form:
+	// `gs://BUCKET_NAME[/NAMESPACE_PATH]/OVERALL_EXPORT_METADATA_FILE`,
+	// where `BUCKET_NAME` is the name of the Cloud Storage bucket,
+	// `NAMESPACE_PATH` is an optional Cloud Storage namespace path (this is
+	// not a Cloud Datastore namespace), and `OVERALL_EXPORT_METADATA_FILE`
+	// is the metadata file written by the ExportEntities operation. For
+	// more information about Cloud Storage namespace paths, see [Object
 	// name
-	// considerations](https://cloud.google.com/storage/docs/naming#obje
-	// ct-considerations).
-	//
-	// For more information,
-	// see
+	// considerations](https://cloud.google.com/storage/docs/naming#object-co
+	// nsiderations). For more information, see
 	// google.datastore.admin.v1beta1.ExportEntitiesResponse.output_url.
 	InputUrl string `json:"inputUrl,omitempty"`
 
@@ -870,13 +790,11 @@ func (s *GoogleDatastoreAdminV1beta1ImportEntitiesRequest) MarshalJSON() ([]byte
 // particular metric.
 type GoogleDatastoreAdminV1beta1Progress struct {
 	// WorkCompleted: The amount of work that has been completed. Note that
-	// this may be greater
-	// than work_estimated.
+	// this may be greater than work_estimated.
 	WorkCompleted int64 `json:"workCompleted,omitempty,string"`
 
 	// WorkEstimated: An estimate of how much work needs to be performed.
-	// May be zero if the
-	// work estimate is unavailable.
+	// May be zero if the work estimate is unavailable.
 	WorkEstimated int64 `json:"workEstimated,omitempty,string"`
 
 	// ForceSendFields is a list of field names (e.g. "WorkCompleted") to
@@ -903,51 +821,38 @@ func (s *GoogleDatastoreAdminV1beta1Progress) MarshalJSON() ([]byte, error) {
 }
 
 // GoogleLongrunningOperation: This resource represents a long-running
-// operation that is the result of a
-// network API call.
+// operation that is the result of a network API call.
 type GoogleLongrunningOperation struct {
 	// Done: If the value is `false`, it means the operation is still in
-	// progress.
-	// If `true`, the operation is completed, and either `error` or
-	// `response` is
-	// available.
+	// progress. If `true`, the operation is completed, and either `error`
+	// or `response` is available.
 	Done bool `json:"done,omitempty"`
 
 	// Error: The error result of the operation in case of failure or
 	// cancellation.
 	Error *Status `json:"error,omitempty"`
 
-	// Metadata: Service-specific metadata associated with the operation.
-	// It typically
-	// contains progress information and common metadata such as create
-	// time.
-	// Some services might not provide such metadata.  Any method that
-	// returns a
-	// long-running operation should document the metadata type, if any.
+	// Metadata: Service-specific metadata associated with the operation. It
+	// typically contains progress information and common metadata such as
+	// create time. Some services might not provide such metadata. Any
+	// method that returns a long-running operation should document the
+	// metadata type, if any.
 	Metadata googleapi.RawMessage `json:"metadata,omitempty"`
 
 	// Name: The server-assigned name, which is only unique within the same
-	// service that
-	// originally returns it. If you use the default HTTP mapping,
-	// the
-	// `name` should have the format of `operations/some/unique/name`.
+	// service that originally returns it. If you use the default HTTP
+	// mapping, the `name` should be a resource name ending with
+	// `operations/{unique_id}`.
 	Name string `json:"name,omitempty"`
 
-	// Response: The normal response of the operation in case of success.
-	// If the original
-	// method returns no data on success, such as `Delete`, the response
-	// is
-	// `google.protobuf.Empty`.  If the original method is
-	// standard
-	// `Get`/`Create`/`Update`, the response should be the resource.  For
-	// other
-	// methods, the response should have the type `XxxResponse`, where
-	// `Xxx`
-	// is the original method name.  For example, if the original method
-	// name
-	// is `TakeSnapshot()`, the inferred response type
-	// is
-	// `TakeSnapshotResponse`.
+	// Response: The normal response of the operation in case of success. If
+	// the original method returns no data on success, such as `Delete`, the
+	// response is `google.protobuf.Empty`. If the original method is
+	// standard `Get`/`Create`/`Update`, the response should be the
+	// resource. For other methods, the response should have the type
+	// `XxxResponse`, where `Xxx` is the original method name. For example,
+	// if the original method name is `TakeSnapshot()`, the inferred
+	// response type is `TakeSnapshotResponse`.
 	Response googleapi.RawMessage `json:"response,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
@@ -978,99 +883,24 @@ func (s *GoogleLongrunningOperation) MarshalJSON() ([]byte, error) {
 }
 
 // Status: The `Status` type defines a logical error model that is
-// suitable for
-// different programming environments, including REST APIs and RPC APIs.
-// It is
-// used by [gRPC](https://github.com/grpc). The error model is designed
-// to be:
-//
-// - Simple to use and understand for most users
-// - Flexible enough to meet unexpected needs
-//
-// # Overview
-//
-// The `Status` message contains three pieces of data: error code,
-// error
-// message, and error details. The error code should be an enum value
-// of
-// google.rpc.Code, but it may accept additional error codes if needed.
-// The
-// error message should be a developer-facing English message that
-// helps
-// developers *understand* and *resolve* the error. If a localized
-// user-facing
-// error message is needed, put the localized message in the error
-// details or
-// localize it in the client. The optional error details may contain
-// arbitrary
-// information about the error. There is a predefined set of error
-// detail types
-// in the package `google.rpc` that can be used for common error
-// conditions.
-//
-// # Language mapping
-//
-// The `Status` message is the logical representation of the error
-// model, but it
-// is not necessarily the actual wire format. When the `Status` message
-// is
-// exposed in different client libraries and different wire protocols,
-// it can be
-// mapped differently. For example, it will likely be mapped to some
-// exceptions
-// in Java, but more likely mapped to some error codes in C.
-//
-// # Other uses
-//
-// The error model and the `Status` message can be used in a variety
-// of
-// environments, either with or without APIs, to provide a
-// consistent developer experience across different
-// environments.
-//
-// Example uses of this error model include:
-//
-// - Partial errors. If a service needs to return partial errors to the
-// client,
-//     it may embed the `Status` in the normal response to indicate the
-// partial
-//     errors.
-//
-// - Workflow errors. A typical workflow has multiple steps. Each step
-// may
-//     have a `Status` message for error reporting.
-//
-// - Batch operations. If a client uses batch request and batch
-// response, the
-//     `Status` message should be used directly inside batch response,
-// one for
-//     each error sub-response.
-//
-// - Asynchronous operations. If an API call embeds asynchronous
-// operation
-//     results in its response, the status of those operations should
-// be
-//     represented directly using the `Status` message.
-//
-// - Logging. If some API errors are stored in logs, the message
-// `Status` could
-//     be used directly after any stripping needed for security/privacy
-// reasons.
+// suitable for different programming environments, including REST APIs
+// and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each
+// `Status` message contains three pieces of data: error code, error
+// message, and error details. You can find out more about this error
+// model and how to work with it in the [API Design
+// Guide](https://cloud.google.com/apis/design/errors).
 type Status struct {
 	// Code: The status code, which should be an enum value of
 	// google.rpc.Code.
 	Code int64 `json:"code,omitempty"`
 
-	// Details: A list of messages that carry the error details.  There is a
-	// common set of
-	// message types for APIs to use.
+	// Details: A list of messages that carry the error details. There is a
+	// common set of message types for APIs to use.
 	Details []googleapi.RawMessage `json:"details,omitempty"`
 
 	// Message: A developer-facing error message, which should be in
-	// English. Any
-	// user-facing error message should be localized and sent in
-	// the
-	// google.rpc.Status.details field, or localized by the client.
+	// English. Any user-facing error message should be localized and sent
+	// in the google.rpc.Status.details field, or localized by the client.
 	Message string `json:"message,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Code") to
@@ -1108,20 +938,13 @@ type ProjectsExportCall struct {
 }
 
 // Export: Exports a copy of all or a subset of entities from Google
-// Cloud Datastore
-// to another storage system, such as Google Cloud Storage. Recent
-// updates to
-// entities may not be reflected in the export. The export occurs in
-// the
-// background and its progress can be monitored and managed via
-// the
-// Operation resource that is created. The output of an export may only
-// be
-// used once the associated operation is done. If an export operation
-// is
-// cancelled before completion it may leave partial data behind in
-// Google
-// Cloud Storage.
+// Cloud Datastore to another storage system, such as Google Cloud
+// Storage. Recent updates to entities may not be reflected in the
+// export. The export occurs in the background and its progress can be
+// monitored and managed via the Operation resource that is created. The
+// output of an export may only be used once the associated operation is
+// done. If an export operation is cancelled before completion it may
+// leave partial data behind in Google Cloud Storage.
 func (r *ProjectsService) Export(projectId string, googledatastoreadminv1beta1exportentitiesrequest *GoogleDatastoreAdminV1beta1ExportEntitiesRequest) *ProjectsExportCall {
 	c := &ProjectsExportCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.projectId = projectId
@@ -1156,7 +979,7 @@ func (c *ProjectsExportCall) Header() http.Header {
 
 func (c *ProjectsExportCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1220,7 +1043,7 @@ func (c *ProjectsExportCall) Do(opts ...googleapi.CallOption) (*GoogleLongrunnin
 	}
 	return ret, nil
 	// {
-	//   "description": "Exports a copy of all or a subset of entities from Google Cloud Datastore\nto another storage system, such as Google Cloud Storage. Recent updates to\nentities may not be reflected in the export. The export occurs in the\nbackground and its progress can be monitored and managed via the\nOperation resource that is created. The output of an export may only be\nused once the associated operation is done. If an export operation is\ncancelled before completion it may leave partial data behind in Google\nCloud Storage.",
+	//   "description": "Exports a copy of all or a subset of entities from Google Cloud Datastore to another storage system, such as Google Cloud Storage. Recent updates to entities may not be reflected in the export. The export occurs in the background and its progress can be monitored and managed via the Operation resource that is created. The output of an export may only be used once the associated operation is done. If an export operation is cancelled before completion it may leave partial data behind in Google Cloud Storage.",
 	//   "flatPath": "v1beta1/projects/{projectId}:export",
 	//   "httpMethod": "POST",
 	//   "id": "datastore.projects.export",
@@ -1262,15 +1085,11 @@ type ProjectsImportCall struct {
 }
 
 // Import: Imports entities into Google Cloud Datastore. Existing
-// entities with the
-// same key are overwritten. The import occurs in the background and
-// its
-// progress can be monitored and managed via the Operation resource that
-// is
-// created. If an ImportEntities operation is cancelled, it is
-// possible
-// that a subset of the data has already been imported to Cloud
-// Datastore.
+// entities with the same key are overwritten. The import occurs in the
+// background and its progress can be monitored and managed via the
+// Operation resource that is created. If an ImportEntities operation is
+// cancelled, it is possible that a subset of the data has already been
+// imported to Cloud Datastore.
 func (r *ProjectsService) Import(projectId string, googledatastoreadminv1beta1importentitiesrequest *GoogleDatastoreAdminV1beta1ImportEntitiesRequest) *ProjectsImportCall {
 	c := &ProjectsImportCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.projectId = projectId
@@ -1305,7 +1124,7 @@ func (c *ProjectsImportCall) Header() http.Header {
 
 func (c *ProjectsImportCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1369,7 +1188,7 @@ func (c *ProjectsImportCall) Do(opts ...googleapi.CallOption) (*GoogleLongrunnin
 	}
 	return ret, nil
 	// {
-	//   "description": "Imports entities into Google Cloud Datastore. Existing entities with the\nsame key are overwritten. The import occurs in the background and its\nprogress can be monitored and managed via the Operation resource that is\ncreated. If an ImportEntities operation is cancelled, it is possible\nthat a subset of the data has already been imported to Cloud Datastore.",
+	//   "description": "Imports entities into Google Cloud Datastore. Existing entities with the same key are overwritten. The import occurs in the background and its progress can be monitored and managed via the Operation resource that is created. If an ImportEntities operation is cancelled, it is possible that a subset of the data has already been imported to Cloud Datastore.",
 	//   "flatPath": "v1beta1/projects/{projectId}:import",
 	//   "httpMethod": "POST",
 	//   "id": "datastore.projects.import",

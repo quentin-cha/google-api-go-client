@@ -1,4 +1,4 @@
-// Copyright 2019 Google LLC.
+// Copyright 2020 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -49,9 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
 	option "google.golang.org/api/option"
+	internaloption "google.golang.org/api/option/internaloption"
 	htransport "google.golang.org/api/transport/http"
 )
 
@@ -68,14 +69,18 @@ var _ = googleapi.Version
 var _ = errors.New
 var _ = strings.Replace
 var _ = context.Canceled
+var _ = internaloption.WithDefaultEndpoint
 
 const apiId = "chat:v1"
 const apiName = "chat"
 const apiVersion = "v1"
 const basePath = "https://chat.googleapis.com/"
+const mtlsBasePath = "https://chat.mtls.googleapis.com/"
 
 // NewService creates a new Service.
 func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	opts = append(opts, internaloption.WithDefaultEndpoint(basePath))
+	opts = append(opts, internaloption.WithDefaultMTLSEndpoint(mtlsBasePath))
 	client, endpoint, err := htransport.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -100,6 +105,9 @@ func New(client *http.Client) (*Service, error) {
 		return nil, errors.New("client is nil")
 	}
 	s := &Service{client: client, BasePath: basePath}
+	s.Dms = NewDmsService(s)
+	s.Media = NewMediaService(s)
+	s.Rooms = NewRoomsService(s)
 	s.Spaces = NewSpacesService(s)
 	return s, nil
 }
@@ -109,6 +117,12 @@ type Service struct {
 	BasePath  string // API endpoint base URL
 	UserAgent string // optional additional User-Agent fragment
 
+	Dms *DmsService
+
+	Media *MediaService
+
+	Rooms *RoomsService
+
 	Spaces *SpacesService
 }
 
@@ -117,6 +131,57 @@ func (s *Service) userAgent() string {
 		return googleapi.UserAgent
 	}
 	return googleapi.UserAgent + " " + s.UserAgent
+}
+
+func NewDmsService(s *Service) *DmsService {
+	rs := &DmsService{s: s}
+	rs.Conversations = NewDmsConversationsService(s)
+	return rs
+}
+
+type DmsService struct {
+	s *Service
+
+	Conversations *DmsConversationsService
+}
+
+func NewDmsConversationsService(s *Service) *DmsConversationsService {
+	rs := &DmsConversationsService{s: s}
+	return rs
+}
+
+type DmsConversationsService struct {
+	s *Service
+}
+
+func NewMediaService(s *Service) *MediaService {
+	rs := &MediaService{s: s}
+	return rs
+}
+
+type MediaService struct {
+	s *Service
+}
+
+func NewRoomsService(s *Service) *RoomsService {
+	rs := &RoomsService{s: s}
+	rs.Conversations = NewRoomsConversationsService(s)
+	return rs
+}
+
+type RoomsService struct {
+	s *Service
+
+	Conversations *RoomsConversationsService
+}
+
+func NewRoomsConversationsService(s *Service) *RoomsConversationsService {
+	rs := &RoomsConversationsService{s: s}
+	return rs
+}
+
+type RoomsConversationsService struct {
+	s *Service
 }
 
 func NewSpacesService(s *Service) *SpacesService {
@@ -145,20 +210,30 @@ type SpacesMembersService struct {
 
 func NewSpacesMessagesService(s *Service) *SpacesMessagesService {
 	rs := &SpacesMessagesService{s: s}
+	rs.Attachments = NewSpacesMessagesAttachmentsService(s)
 	return rs
 }
 
 type SpacesMessagesService struct {
 	s *Service
+
+	Attachments *SpacesMessagesAttachmentsService
+}
+
+func NewSpacesMessagesAttachmentsService(s *Service) *SpacesMessagesAttachmentsService {
+	rs := &SpacesMessagesAttachmentsService{s: s}
+	return rs
+}
+
+type SpacesMessagesAttachmentsService struct {
+	s *Service
 }
 
 // ActionParameter: List of string parameters to supply when the action
-// method is invoked.
-// For example, consider three snooze buttons: snooze now, snooze 1
-// day,
-// snooze next week. You might use action method = snooze(), passing
-// the
-// snooze type and snooze time in the list of string parameters.
+// method is invoked. For example, consider three snooze buttons: snooze
+// now, snooze 1 day, snooze next week. You might use action method =
+// snooze(), passing the snooze type and snooze time in the list of
+// string parameters.
 type ActionParameter struct {
 	// Key: The name of the parameter for the action script.
 	Key string `json:"key,omitempty"`
@@ -231,39 +306,22 @@ func (s *ActionResponse) MarshalJSON() ([]byte, error) {
 }
 
 // Annotation: Annotations associated with the plain-text body of the
-// message.
-//
-// Example plain-text message body:
-// ```
-// Hello @FooBot how are you!"
-// ```
-//
-// The corresponding annotations metadata:
-// ```
-// "annotations":[{
-//   "type":"USER_MENTION",
-//   "startIndex":6,
-//   "length":7,
-//   "userMention": {
-//     "user": {
-//       "name":"users/107946847022116401880",
-//       "displayName":"FooBot",
-//       "avatarUrl":"https://goo.gl/aeDtrS",
-//       "type":"BOT"
-//     },
-//     "type":"MENTION"
-//    }
-// }]
-// ```
+// message. Example plain-text message body: ``` Hello @FooBot how are
+// you!" ``` The corresponding annotations metadata: ```
+// "annotations":[{ "type":"USER_MENTION", "startIndex":6, "length":7,
+// "userMention": { "user": { "name":"users/107946847022116401880",
+// "displayName":"FooBot", "avatarUrl":"https://goo.gl/aeDtrS",
+// "type":"BOT" }, "type":"MENTION" } }] ```
 type Annotation struct {
 	// Length: Length of the substring in the plain-text message body this
-	// annotation
-	// corresponds to.
+	// annotation corresponds to.
 	Length int64 `json:"length,omitempty"`
 
+	// SlashCommand: The metadata for a slash command.
+	SlashCommand *SlashCommandMetadata `json:"slashCommand,omitempty"`
+
 	// StartIndex: Start index (0-based, inclusive) in the plain-text
-	// message body this
-	// annotation corresponds to.
+	// message body this annotation corresponds to.
 	StartIndex int64 `json:"startIndex,omitempty"`
 
 	// Type: The type of this annotation.
@@ -272,6 +330,7 @@ type Annotation struct {
 	//   "ANNOTATION_TYPE_UNSPECIFIED" - Default value for the enum. DO NOT
 	// USE.
 	//   "USER_MENTION" - A user is mentioned.
+	//   "SLASH_COMMAND" - A slash command is invoked.
 	Type string `json:"type,omitempty"`
 
 	// UserMention: The metadata of user mention.
@@ -296,6 +355,102 @@ type Annotation struct {
 
 func (s *Annotation) MarshalJSON() ([]byte, error) {
 	type NoMethod Annotation
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// Attachment: An attachment in Hangouts Chat.
+type Attachment struct {
+	// AttachmentDataRef: A reference to the attachment data. This is used
+	// with the media API to download the attachment data.
+	AttachmentDataRef *AttachmentDataRef `json:"attachmentDataRef,omitempty"`
+
+	// ContentName: The original file name for the content, not the full
+	// path.
+	ContentName string `json:"contentName,omitempty"`
+
+	// ContentType: The content type (MIME type) of the file.
+	ContentType string `json:"contentType,omitempty"`
+
+	// DownloadUri: Output only. The download URL which should be used to
+	// allow a human user to download the attachment. Bots should not use
+	// this URL to download attachment content.
+	DownloadUri string `json:"downloadUri,omitempty"`
+
+	// DriveDataRef: A reference to the drive attachment. This is used with
+	// the Drive API.
+	DriveDataRef *DriveDataRef `json:"driveDataRef,omitempty"`
+
+	// Name: Resource name of the attachment, in the form
+	// "spaces/*/messages/*/attachments/*".
+	Name string `json:"name,omitempty"`
+
+	// Source: The source of the attachment.
+	//
+	// Possible values:
+	//   "SOURCE_UNSPECIFIED"
+	//   "DRIVE_FILE"
+	//   "UPLOADED_CONTENT"
+	Source string `json:"source,omitempty"`
+
+	// ThumbnailUri: Output only. The thumbnail URL which should be used to
+	// preview the attachment to a human user. Bots should not use this URL
+	// to download attachment content.
+	ThumbnailUri string `json:"thumbnailUri,omitempty"`
+
+	// ServerResponse contains the HTTP response code and headers from the
+	// server.
+	googleapi.ServerResponse `json:"-"`
+
+	// ForceSendFields is a list of field names (e.g. "AttachmentDataRef")
+	// to unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "AttachmentDataRef") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *Attachment) MarshalJSON() ([]byte, error) {
+	type NoMethod Attachment
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// AttachmentDataRef: A reference to the data of an attachment.
+type AttachmentDataRef struct {
+	// ResourceName: The resource name of the attachment data. This is used
+	// with the media API to download the attachment data.
+	ResourceName string `json:"resourceName,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "ResourceName") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ResourceName") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *AttachmentDataRef) MarshalJSON() ([]byte, error) {
+	type NoMethod AttachmentDataRef
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -370,11 +525,9 @@ func (s *Card) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// CardAction: A card action is
-// the action associated with the card. For an invoice card, a
-// typical action would be: delete invoice, email invoice or open
-// the
-// invoice in browser.
+// CardAction: A card action is the action associated with the card. For
+// an invoice card, a typical action would be: delete invoice, email
+// invoice or open the invoice in browser.
 type CardAction struct {
 	// ActionLabel: The label used to be displayed in the action menu item.
 	ActionLabel string `json:"actionLabel,omitempty"`
@@ -421,10 +574,8 @@ type CardHeader struct {
 	Subtitle string `json:"subtitle,omitempty"`
 
 	// Title: The title must be specified. The header has a fixed height: if
-	// both a
-	// title and subtitle is specified, each will take up 1 line. If only
-	// the
-	// title is specified, it will take up both lines.
+	// both a title and subtitle is specified, each will take up 1 line. If
+	// only the title is specified, it will take up both lines.
 	Title string `json:"title,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "ImageStyle") to
@@ -450,24 +601,18 @@ func (s *CardHeader) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// DeprecatedEvent: Hangouts Chat events.
+// DeprecatedEvent: Google Chat events.
 type DeprecatedEvent struct {
 	// Action: The form action data associated with an interactive card that
-	// was clicked.
-	// Only populated for
-	// CARD_CLICKED events.
-	// See the [Interactive Cards
-	// guide](/hangouts/chat/how-tos/cards-onclick) for
+	// was clicked. Only populated for CARD_CLICKED events. See the
+	// [Interactive Cards guide](/hangouts/chat/how-tos/cards-onclick) for
 	// more information.
 	Action *FormAction `json:"action,omitempty"`
 
 	// ConfigCompleteRedirectUrl: The URL the bot should redirect the user
-	// to after they have completed an
-	// authorization or configuration flow outside of Hangouts Chat. See
-	// the
-	// [Authorizing access to 3p services
-	// guide](/hangouts/chat/how-tos/auth-3p)
-	// for more information.
+	// to after they have completed an authorization or configuration flow
+	// outside of Google Chat. See the [Authorizing access to 3p services
+	// guide](/hangouts/chat/how-tos/auth-3p) for more information.
 	ConfigCompleteRedirectUrl string `json:"configCompleteRedirectUrl,omitempty"`
 
 	// EventTime: The timestamp indicating when the event was dispatched.
@@ -480,18 +625,15 @@ type DeprecatedEvent struct {
 	Space *Space `json:"space,omitempty"`
 
 	// ThreadKey: The bot-defined key for the thread related to the event.
-	// See the
-	// thread_key field of the
-	// `spaces.message.create` request for more information.
+	// See the thread_key field of the `spaces.message.create` request for
+	// more information.
 	ThreadKey string `json:"threadKey,omitempty"`
 
 	// Token: A secret value that bots can use to verify if a request is
-	// from Google. The
-	// token is randomly generated by Google, remains static, and can be
-	// obtained
-	// from the Hangouts Chat API configuration page in the Cloud
-	// Console.
-	// Developers can revoke/regenerate it if needed from the same page.
+	// from Google. The token is randomly generated by Google, remains
+	// static, and can be obtained from the Google Chat API configuration
+	// page in the Cloud Console. Developers can revoke/regenerate it if
+	// needed from the same page.
 	Token string `json:"token,omitempty"`
 
 	// Type: The type of the event.
@@ -530,18 +672,40 @@ func (s *DeprecatedEvent) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// DriveDataRef: A reference to the data of a drive attachment.
+type DriveDataRef struct {
+	// DriveFileId: The id for the drive file, for use with the Drive API.
+	DriveFileId string `json:"driveFileId,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "DriveFileId") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "DriveFileId") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *DriveDataRef) MarshalJSON() ([]byte, error) {
+	type NoMethod DriveDataRef
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // Empty: A generic empty message that you can re-use to avoid defining
-// duplicated
-// empty messages in your APIs. A typical example is to use it as the
-// request
-// or the response type of an API method. For instance:
-//
-//     service Foo {
-//       rpc Bar(google.protobuf.Empty) returns
-// (google.protobuf.Empty);
-//     }
-//
-// The JSON representation for `Empty` is empty JSON object `{}`.
+// duplicated empty messages in your APIs. A typical example is to use
+// it as the request or the response type of an API method. For
+// instance: service Foo { rpc Bar(google.protobuf.Empty) returns
+// (google.protobuf.Empty); } The JSON representation for `Empty` is
+// empty JSON object `{}`.
 type Empty struct {
 	// ServerResponse contains the HTTP response code and headers from the
 	// server.
@@ -549,12 +713,14 @@ type Empty struct {
 }
 
 // FormAction: A form action describes the behavior when the form is
-// submitted.
-// For example, an Apps Script can be invoked to handle the form.
+// submitted. For example, an Apps Script can be invoked to handle the
+// form.
 type FormAction struct {
-	// ActionMethodName: Apps Script function to invoke when the containing
-	// element is
-	// clicked/activated.
+	// ActionMethodName: The method name is used to identify which part of
+	// the form triggered the form submission. This information is echoed
+	// back to the bot as part of the card click event. The same method name
+	// can be used for several elements that trigger a common behavior if
+	// desired.
 	ActionMethodName string `json:"actionMethodName,omitempty"`
 
 	// Parameters: List of action parameters.
@@ -587,7 +753,11 @@ func (s *FormAction) MarshalJSON() ([]byte, error) {
 // Image: An image that is specified by a URL and can have an onclick
 // action.
 type Image struct {
-	// AspectRatio: The aspect ratio of this image (width/height).
+	// AspectRatio: The aspect ratio of this image (width/height). This
+	// field allows clients to reserve the right height for the image while
+	// waiting for it to load. It's not meant to override the native aspect
+	// ratio of the image. If unset, the server fills it by prefetching the
+	// image.
 	AspectRatio float64 `json:"aspectRatio,omitempty"`
 
 	// ImageUrl: The URL of the image.
@@ -636,8 +806,7 @@ func (s *Image) UnmarshalJSON(data []byte) error {
 // ImageButton: An image button with an onclick action.
 type ImageButton struct {
 	// Icon: The icon specified by an enum that indices to an icon provided
-	// by Chat
-	// API.
+	// by Chat API.
 	//
 	// Possible values:
 	//   "ICON_UNSPECIFIED"
@@ -677,8 +846,8 @@ type ImageButton struct {
 	IconUrl string `json:"iconUrl,omitempty"`
 
 	// Name: The name of this image_button which will be used for
-	// accessibility.
-	// Default value will be provided if developers don't specify.
+	// accessibility. Default value will be provided if developers don't
+	// specify.
 	Name string `json:"name,omitempty"`
 
 	// OnClick: The onclick action.
@@ -708,8 +877,8 @@ func (s *ImageButton) MarshalJSON() ([]byte, error) {
 }
 
 // KeyValue: A UI element contains a key (label) and a value (content).
-// And this
-// element may also contain some actions such as onclick button.
+// And this element may also contain some actions such as onclick
+// button.
 type KeyValue struct {
 	// BottomLabel: The text of the bottom label. Formatted text supported.
 	BottomLabel string `json:"bottomLabel,omitempty"`
@@ -724,8 +893,7 @@ type KeyValue struct {
 	// ContentMultiline: If the content should be multiline.
 	ContentMultiline bool `json:"contentMultiline,omitempty"`
 
-	// Icon: An enum value that will be replaced by the Chat API with
-	// the
+	// Icon: An enum value that will be replaced by the Chat API with the
 	// corresponding icon image.
 	//
 	// Possible values:
@@ -766,8 +934,7 @@ type KeyValue struct {
 	IconUrl string `json:"iconUrl,omitempty"`
 
 	// OnClick: The onclick action. Only the top label, bottom label and
-	// content region
-	// are clickable.
+	// content region are clickable.
 	OnClick *OnClick `json:"onClick,omitempty"`
 
 	// TopLabel: The text of the top label. Formatted text supported.
@@ -801,8 +968,7 @@ type ListMembershipsResponse struct {
 	Memberships []*Membership `json:"memberships,omitempty"`
 
 	// NextPageToken: Continuation token to retrieve the next page of
-	// results. It will be empty
-	// for the last page of results.
+	// results. It will be empty for the last page of results.
 	NextPageToken string `json:"nextPageToken,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
@@ -834,10 +1000,8 @@ func (s *ListMembershipsResponse) MarshalJSON() ([]byte, error) {
 
 type ListSpacesResponse struct {
 	// NextPageToken: Continuation token to retrieve the next page of
-	// results. It will be empty
-	// for the last page of results. Tokens expire in an hour. An error is
-	// thrown
-	// if an expired token is passed.
+	// results. It will be empty for the last page of results. Tokens expire
+	// in an hour. An error is thrown if an expired token is passed.
 	NextPageToken string `json:"nextPageToken,omitempty"`
 
 	// Spaces: List of spaces in the requested (or first) page.
@@ -870,20 +1034,47 @@ func (s *ListSpacesResponse) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// Media: Media resource.
+type Media struct {
+	// ResourceName: Name of the media resource.
+	ResourceName string `json:"resourceName,omitempty"`
+
+	// ServerResponse contains the HTTP response code and headers from the
+	// server.
+	googleapi.ServerResponse `json:"-"`
+
+	// ForceSendFields is a list of field names (e.g. "ResourceName") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ResourceName") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *Media) MarshalJSON() ([]byte, error) {
+	type NoMethod Media
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // Membership: Represents a membership relation in Hangouts Chat.
 type Membership struct {
 	// CreateTime: The creation time of the membership a.k.a the time at
-	// which the member
-	// joined the space, if applicable.
+	// which the member joined the space, if applicable.
 	CreateTime string `json:"createTime,omitempty"`
 
-	// Member: Member details.
+	// Member: A User in Hangout Chat
 	Member *User `json:"member,omitempty"`
 
-	// Name: Resource name of the membership, in the form
-	// "spaces/*/members/*".
-	//
-	// Example: spaces/AAAAMpdlehY/members/105115627578887013105
 	Name string `json:"name,omitempty"`
 
 	// State: State of the membership.
@@ -892,11 +1083,9 @@ type Membership struct {
 	//   "MEMBERSHIP_STATE_UNSPECIFIED" - Default, do not use.
 	//   "JOINED" - The user has joined the space.
 	//   "INVITED" - The user has been invited, is able to join the space,
-	// but currently has
-	// not joined.
+	// but currently has not joined.
 	//   "NOT_A_MEMBER" - The user is not a member of the space, has not
-	// been invited and is not
-	// able to join the space.
+	// been invited and is not able to join the space.
 	State string `json:"state,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
@@ -929,8 +1118,7 @@ func (s *Membership) MarshalJSON() ([]byte, error) {
 // Message: A message in Hangouts Chat.
 type Message struct {
 	// ActionResponse: Input only. Parameters that a bot can use to
-	// configure how its response is
-	// posted.
+	// configure how its response is posted.
 	ActionResponse *ActionResponse `json:"actionResponse,omitempty"`
 
 	// Annotations: Output only. Annotations associated with the text in
@@ -941,37 +1129,38 @@ type Message struct {
 	// stripped out.
 	ArgumentText string `json:"argumentText,omitempty"`
 
+	// Attachment: User uploaded attachment.
+	Attachment []*Attachment `json:"attachment,omitempty"`
+
 	// Cards: Rich, formatted and interactive cards that can be used to
-	// display UI
-	// elements such as: formatted texts, buttons, clickable images. Cards
-	// are
-	// normally displayed below the plain-text body of the message.
+	// display UI elements such as: formatted texts, buttons, clickable
+	// images. Cards are normally displayed below the plain-text body of the
+	// message.
 	Cards []*Card `json:"cards,omitempty"`
 
 	// CreateTime: Output only. The time at which the message was created in
-	// Hangouts Chat
-	// server.
+	// Hangouts Chat server.
 	CreateTime string `json:"createTime,omitempty"`
 
 	// FallbackText: A plain-text description of the message's cards, used
-	// when the actual cards
-	// cannot be displayed (e.g. mobile notifications).
+	// when the actual cards cannot be displayed (e.g. mobile
+	// notifications).
 	FallbackText string `json:"fallbackText,omitempty"`
 
-	// Name: Resource name, in the form "spaces/*/messages/*".
-	//
-	// Example: spaces/AAAAMpdlehY/messages/UMxbHmzDlr4.UMxbHmzDlr4
+	// Name: Resource name, in the form "spaces/*/messages/*". Example:
+	// spaces/AAAAMpdlehY/messages/UMxbHmzDlr4.UMxbHmzDlr4
 	Name string `json:"name,omitempty"`
 
 	// PreviewText: Text for generating preview chips. This text will not be
-	// displayed to the
-	// user, but any links to images, web pages, videos, etc. included here
-	// will
-	// generate preview chips.
+	// displayed to the user, but any links to images, web pages, videos,
+	// etc. included here will generate preview chips.
 	PreviewText string `json:"previewText,omitempty"`
 
 	// Sender: The user who created the message.
 	Sender *User `json:"sender,omitempty"`
+
+	// SlashCommand: Slash command information, if applicable.
+	SlashCommand *SlashCommand `json:"slashCommand,omitempty"`
 
 	// Space: The space the message belongs to.
 	Space *Space `json:"space,omitempty"`
@@ -1012,7 +1201,7 @@ func (s *Message) MarshalJSON() ([]byte, error) {
 
 // OnClick: An onclick action (e.g. open a link).
 type OnClick struct {
-	// Action: A form action will be trigger by this onclick if specified.
+	// Action: A form action will be triggered by this onclick if specified.
 	Action *FormAction `json:"action,omitempty"`
 
 	// OpenLink: This onclick triggers an open link action if specified.
@@ -1069,12 +1258,10 @@ func (s *OpenLink) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// Section: A section contains a collection of widgets that are
-// rendered
+// Section: A section contains a collection of widgets that are rendered
 // (vertically) in the order that they are specified. Across all
-// platforms,
-// cards have a narrow fixed width, so
-// there is currently no need for layout properties (e.g. float).
+// platforms, cards have a narrow fixed width, so there is currently no
+// need for layout properties (e.g. float).
 type Section struct {
 	// Header: The header of the section, text formatted supported.
 	Header string `json:"header,omitempty"`
@@ -1105,27 +1292,105 @@ func (s *Section) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// SlashCommand: A Slash Command in Hangouts Chat.
+type SlashCommand struct {
+	// CommandId: The id of the slash command invoked.
+	CommandId int64 `json:"commandId,omitempty,string"`
+
+	// ForceSendFields is a list of field names (e.g. "CommandId") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "CommandId") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *SlashCommand) MarshalJSON() ([]byte, error) {
+	type NoMethod SlashCommand
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// SlashCommandMetadata: Annotation metadata for slash commands (/).
+type SlashCommandMetadata struct {
+	// Bot: The bot whose command was invoked.
+	Bot *User `json:"bot,omitempty"`
+
+	// CommandId: The command id of the invoked slash command.
+	CommandId int64 `json:"commandId,omitempty,string"`
+
+	// CommandName: The name of the invoked slash command.
+	CommandName string `json:"commandName,omitempty"`
+
+	// TriggersDialog: Indicating whether the slash command is for a dialog.
+	TriggersDialog bool `json:"triggersDialog,omitempty"`
+
+	// Type: The type of slash command.
+	//
+	// Possible values:
+	//   "TYPE_UNSPECIFIED" - Default value for the enum. DO NOT USE.
+	//   "ADD" - Add bot to space.
+	//   "INVOKE" - Invoke slash command in space.
+	Type string `json:"type,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Bot") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Bot") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *SlashCommandMetadata) MarshalJSON() ([]byte, error) {
+	type NoMethod SlashCommandMetadata
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // Space: A room or DM in Hangouts Chat.
 type Space struct {
 	// DisplayName: Output only. The display name (only if the space is a
-	// room).
+	// room). Please note that this field might not be populated in direct
+	// messages between humans.
 	DisplayName string `json:"displayName,omitempty"`
 
-	// Name: Resource name of the space, in the form "spaces/*".
-	//
-	// Example: spaces/AAAAMpdlehYs
+	// Name: Resource name of the space, in the form "spaces/*". Example:
+	// spaces/AAAAMpdlehYs
 	Name string `json:"name,omitempty"`
 
-	// Type: Output only. The type of a space.
+	// SingleUserBotDm: Whether the space is a DM between a bot and a single
+	// human.
+	SingleUserBotDm bool `json:"singleUserBotDm,omitempty"`
+
+	// Threaded: Whether the messages are threaded in this space.
+	Threaded bool `json:"threaded,omitempty"`
+
+	// Type: Output only. The type of a space. This is deprecated. Use
+	// `single_user_bot_dm` instead.
 	//
 	// Possible values:
 	//   "TYPE_UNSPECIFIED"
-	//   "ROOM" - A chat space where memberships are free to change.
-	// Messages in rooms are
-	// threaded.
+	//   "ROOM" - Multi-user spaces such as rooms and DMs between humans.
 	//   "DM" - 1:1 Direct Message between a human and a bot, where all
-	// messages are
-	// flat.
+	// messages are flat.
 	Type string `json:"type,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
@@ -1215,9 +1480,8 @@ func (s *TextParagraph) MarshalJSON() ([]byte, error) {
 
 // Thread: A thread in Hangouts Chat.
 type Thread struct {
-	// Name: Resource name, in the form "spaces/*/threads/*".
-	//
-	// Example: spaces/AAAAMpdlehY/threads/UMxbHmzDlr4
+	// Name: Resource name, in the form "spaces/*/threads/*". Example:
+	// spaces/AAAAMpdlehY/threads/UMxbHmzDlr4
 	Name string `json:"name,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Name") to
@@ -1247,6 +1511,13 @@ func (s *Thread) MarshalJSON() ([]byte, error) {
 type User struct {
 	// DisplayName: The user's display name.
 	DisplayName string `json:"displayName,omitempty"`
+
+	// DomainId: Obfuscated domain information.
+	DomainId string `json:"domainId,omitempty"`
+
+	// IsAnonymous: True when the user is deleted or the user's proifle is
+	// not visible.
+	IsAnonymous bool `json:"isAnonymous,omitempty"`
 
 	// Name: Resource name, in the format "users/*".
 	Name string `json:"name,omitempty"`
@@ -1322,8 +1593,7 @@ func (s *UserMentionMetadata) MarshalJSON() ([]byte, error) {
 // etc.
 type WidgetMarkup struct {
 	// Buttons: A list of buttons. Buttons is also oneof data and only one
-	// of these
-	// fields should be set.
+	// of these fields should be set.
 	Buttons []*Button `json:"buttons,omitempty"`
 
 	// Image: Display an image in this widget.
@@ -1356,6 +1626,793 @@ func (s *WidgetMarkup) MarshalJSON() ([]byte, error) {
 	type NoMethod WidgetMarkup
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// method id "chat.dms.messages":
+
+type DmsMessagesCall struct {
+	s          *Service
+	parent     string
+	message    *Message
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// Messages: Legacy path for creating message. Calling these will result
+// in a BadRequest response.
+func (r *DmsService) Messages(parent string, message *Message) *DmsMessagesCall {
+	c := &DmsMessagesCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.parent = parent
+	c.message = message
+	return c
+}
+
+// ThreadKey sets the optional parameter "threadKey": Opaque thread
+// identifier string that can be specified to group messages into a
+// single thread. If this is the first message with a given thread
+// identifier, a new thread is created. Subsequent messages with the
+// same thread identifier will be posted into the same thread. This
+// relieves bots and webhooks from having to store the Hangouts Chat
+// thread ID of a thread (created earlier by them) to post further
+// updates to it. Has no effect if thread field, corresponding to an
+// existing thread, is set in message.
+func (c *DmsMessagesCall) ThreadKey(threadKey string) *DmsMessagesCall {
+	c.urlParams_.Set("threadKey", threadKey)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *DmsMessagesCall) Fields(s ...googleapi.Field) *DmsMessagesCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *DmsMessagesCall) Context(ctx context.Context) *DmsMessagesCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *DmsMessagesCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *DmsMessagesCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.message)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v1/{+parent}/messages")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"parent": c.parent,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "chat.dms.messages" call.
+// Exactly one of *Message or error will be non-nil. Any non-2xx status
+// code is an error. Response headers are in either
+// *Message.ServerResponse.Header or (if a response was returned at all)
+// in error.(*googleapi.Error).Header. Use googleapi.IsNotModified to
+// check whether the returned error was because http.StatusNotModified
+// was returned.
+func (c *DmsMessagesCall) Do(opts ...googleapi.CallOption) (*Message, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &Message{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Legacy path for creating message. Calling these will result in a BadRequest response.",
+	//   "flatPath": "v1/dms/{dmsId}/messages",
+	//   "httpMethod": "POST",
+	//   "id": "chat.dms.messages",
+	//   "parameterOrder": [
+	//     "parent"
+	//   ],
+	//   "parameters": {
+	//     "parent": {
+	//       "description": "Required. Space resource name, in the form \"spaces/*\". Example: spaces/AAAAMpdlehY",
+	//       "location": "path",
+	//       "pattern": "^dms/[^/]+$",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "threadKey": {
+	//       "description": "Opaque thread identifier string that can be specified to group messages into a single thread. If this is the first message with a given thread identifier, a new thread is created. Subsequent messages with the same thread identifier will be posted into the same thread. This relieves bots and webhooks from having to store the Hangouts Chat thread ID of a thread (created earlier by them) to post further updates to it. Has no effect if thread field, corresponding to an existing thread, is set in message.",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v1/{+parent}/messages",
+	//   "request": {
+	//     "$ref": "Message"
+	//   },
+	//   "response": {
+	//     "$ref": "Message"
+	//   }
+	// }
+
+}
+
+// method id "chat.dms.conversations.messages":
+
+type DmsConversationsMessagesCall struct {
+	s          *Service
+	parent     string
+	message    *Message
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// Messages: Legacy path for creating message. Calling these will result
+// in a BadRequest response.
+func (r *DmsConversationsService) Messages(parent string, message *Message) *DmsConversationsMessagesCall {
+	c := &DmsConversationsMessagesCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.parent = parent
+	c.message = message
+	return c
+}
+
+// ThreadKey sets the optional parameter "threadKey": Opaque thread
+// identifier string that can be specified to group messages into a
+// single thread. If this is the first message with a given thread
+// identifier, a new thread is created. Subsequent messages with the
+// same thread identifier will be posted into the same thread. This
+// relieves bots and webhooks from having to store the Hangouts Chat
+// thread ID of a thread (created earlier by them) to post further
+// updates to it. Has no effect if thread field, corresponding to an
+// existing thread, is set in message.
+func (c *DmsConversationsMessagesCall) ThreadKey(threadKey string) *DmsConversationsMessagesCall {
+	c.urlParams_.Set("threadKey", threadKey)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *DmsConversationsMessagesCall) Fields(s ...googleapi.Field) *DmsConversationsMessagesCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *DmsConversationsMessagesCall) Context(ctx context.Context) *DmsConversationsMessagesCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *DmsConversationsMessagesCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *DmsConversationsMessagesCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.message)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v1/{+parent}/messages")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"parent": c.parent,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "chat.dms.conversations.messages" call.
+// Exactly one of *Message or error will be non-nil. Any non-2xx status
+// code is an error. Response headers are in either
+// *Message.ServerResponse.Header or (if a response was returned at all)
+// in error.(*googleapi.Error).Header. Use googleapi.IsNotModified to
+// check whether the returned error was because http.StatusNotModified
+// was returned.
+func (c *DmsConversationsMessagesCall) Do(opts ...googleapi.CallOption) (*Message, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &Message{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Legacy path for creating message. Calling these will result in a BadRequest response.",
+	//   "flatPath": "v1/dms/{dmsId}/conversations/{conversationsId}/messages",
+	//   "httpMethod": "POST",
+	//   "id": "chat.dms.conversations.messages",
+	//   "parameterOrder": [
+	//     "parent"
+	//   ],
+	//   "parameters": {
+	//     "parent": {
+	//       "description": "Required. Space resource name, in the form \"spaces/*\". Example: spaces/AAAAMpdlehY",
+	//       "location": "path",
+	//       "pattern": "^dms/[^/]+/conversations/[^/]+$",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "threadKey": {
+	//       "description": "Opaque thread identifier string that can be specified to group messages into a single thread. If this is the first message with a given thread identifier, a new thread is created. Subsequent messages with the same thread identifier will be posted into the same thread. This relieves bots and webhooks from having to store the Hangouts Chat thread ID of a thread (created earlier by them) to post further updates to it. Has no effect if thread field, corresponding to an existing thread, is set in message.",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v1/{+parent}/messages",
+	//   "request": {
+	//     "$ref": "Message"
+	//   },
+	//   "response": {
+	//     "$ref": "Message"
+	//   }
+	// }
+
+}
+
+// method id "chat.media.download":
+
+type MediaDownloadCall struct {
+	s            *Service
+	resourceName string
+	urlParams_   gensupport.URLParams
+	ifNoneMatch_ string
+	ctx_         context.Context
+	header_      http.Header
+}
+
+// Download: Downloads media. Download is supported on the URI
+// `/v1/media/{+name}?alt=media`.
+func (r *MediaService) Download(resourceName string) *MediaDownloadCall {
+	c := &MediaDownloadCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.resourceName = resourceName
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *MediaDownloadCall) Fields(s ...googleapi.Field) *MediaDownloadCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets the optional parameter which makes the operation
+// fail if the object's ETag matches the given value. This is useful for
+// getting updates only after the object has changed since the last
+// request. Use googleapi.IsNotModified to check whether the response
+// error from Do is the result of In-None-Match.
+func (c *MediaDownloadCall) IfNoneMatch(entityTag string) *MediaDownloadCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do and Download
+// methods. Any pending HTTP request will be aborted if the provided
+// context is canceled.
+func (c *MediaDownloadCall) Context(ctx context.Context) *MediaDownloadCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *MediaDownloadCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *MediaDownloadCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v1/media/{+resourceName}")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"resourceName": c.resourceName,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Download fetches the API endpoint's "media" value, instead of the normal
+// API response value. If the returned error is nil, the Response is guaranteed to
+// have a 2xx status code. Callers must close the Response.Body as usual.
+func (c *MediaDownloadCall) Download(opts ...googleapi.CallOption) (*http.Response, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("media")
+	if err != nil {
+		return nil, err
+	}
+	if err := googleapi.CheckResponse(res); err != nil {
+		res.Body.Close()
+		return nil, err
+	}
+	return res, nil
+}
+
+// Do executes the "chat.media.download" call.
+// Exactly one of *Media or error will be non-nil. Any non-2xx status
+// code is an error. Response headers are in either
+// *Media.ServerResponse.Header or (if a response was returned at all)
+// in error.(*googleapi.Error).Header. Use googleapi.IsNotModified to
+// check whether the returned error was because http.StatusNotModified
+// was returned.
+func (c *MediaDownloadCall) Do(opts ...googleapi.CallOption) (*Media, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &Media{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Downloads media. Download is supported on the URI `/v1/media/{+name}?alt=media`.",
+	//   "flatPath": "v1/media/{mediaId}",
+	//   "httpMethod": "GET",
+	//   "id": "chat.media.download",
+	//   "parameterOrder": [
+	//     "resourceName"
+	//   ],
+	//   "parameters": {
+	//     "resourceName": {
+	//       "description": "Name of the media that is being downloaded. See ReadRequest.resource_name.",
+	//       "location": "path",
+	//       "pattern": "^.*$",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v1/media/{+resourceName}",
+	//   "response": {
+	//     "$ref": "Media"
+	//   },
+	//   "supportsMediaDownload": true
+	// }
+
+}
+
+// method id "chat.rooms.messages":
+
+type RoomsMessagesCall struct {
+	s          *Service
+	parent     string
+	message    *Message
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// Messages: Legacy path for creating message. Calling these will result
+// in a BadRequest response.
+func (r *RoomsService) Messages(parent string, message *Message) *RoomsMessagesCall {
+	c := &RoomsMessagesCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.parent = parent
+	c.message = message
+	return c
+}
+
+// ThreadKey sets the optional parameter "threadKey": Opaque thread
+// identifier string that can be specified to group messages into a
+// single thread. If this is the first message with a given thread
+// identifier, a new thread is created. Subsequent messages with the
+// same thread identifier will be posted into the same thread. This
+// relieves bots and webhooks from having to store the Hangouts Chat
+// thread ID of a thread (created earlier by them) to post further
+// updates to it. Has no effect if thread field, corresponding to an
+// existing thread, is set in message.
+func (c *RoomsMessagesCall) ThreadKey(threadKey string) *RoomsMessagesCall {
+	c.urlParams_.Set("threadKey", threadKey)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *RoomsMessagesCall) Fields(s ...googleapi.Field) *RoomsMessagesCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *RoomsMessagesCall) Context(ctx context.Context) *RoomsMessagesCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *RoomsMessagesCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RoomsMessagesCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.message)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v1/{+parent}/messages")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"parent": c.parent,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "chat.rooms.messages" call.
+// Exactly one of *Message or error will be non-nil. Any non-2xx status
+// code is an error. Response headers are in either
+// *Message.ServerResponse.Header or (if a response was returned at all)
+// in error.(*googleapi.Error).Header. Use googleapi.IsNotModified to
+// check whether the returned error was because http.StatusNotModified
+// was returned.
+func (c *RoomsMessagesCall) Do(opts ...googleapi.CallOption) (*Message, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &Message{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Legacy path for creating message. Calling these will result in a BadRequest response.",
+	//   "flatPath": "v1/rooms/{roomsId}/messages",
+	//   "httpMethod": "POST",
+	//   "id": "chat.rooms.messages",
+	//   "parameterOrder": [
+	//     "parent"
+	//   ],
+	//   "parameters": {
+	//     "parent": {
+	//       "description": "Required. Space resource name, in the form \"spaces/*\". Example: spaces/AAAAMpdlehY",
+	//       "location": "path",
+	//       "pattern": "^rooms/[^/]+$",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "threadKey": {
+	//       "description": "Opaque thread identifier string that can be specified to group messages into a single thread. If this is the first message with a given thread identifier, a new thread is created. Subsequent messages with the same thread identifier will be posted into the same thread. This relieves bots and webhooks from having to store the Hangouts Chat thread ID of a thread (created earlier by them) to post further updates to it. Has no effect if thread field, corresponding to an existing thread, is set in message.",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v1/{+parent}/messages",
+	//   "request": {
+	//     "$ref": "Message"
+	//   },
+	//   "response": {
+	//     "$ref": "Message"
+	//   }
+	// }
+
+}
+
+// method id "chat.rooms.conversations.messages":
+
+type RoomsConversationsMessagesCall struct {
+	s          *Service
+	parent     string
+	message    *Message
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// Messages: Legacy path for creating message. Calling these will result
+// in a BadRequest response.
+func (r *RoomsConversationsService) Messages(parent string, message *Message) *RoomsConversationsMessagesCall {
+	c := &RoomsConversationsMessagesCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.parent = parent
+	c.message = message
+	return c
+}
+
+// ThreadKey sets the optional parameter "threadKey": Opaque thread
+// identifier string that can be specified to group messages into a
+// single thread. If this is the first message with a given thread
+// identifier, a new thread is created. Subsequent messages with the
+// same thread identifier will be posted into the same thread. This
+// relieves bots and webhooks from having to store the Hangouts Chat
+// thread ID of a thread (created earlier by them) to post further
+// updates to it. Has no effect if thread field, corresponding to an
+// existing thread, is set in message.
+func (c *RoomsConversationsMessagesCall) ThreadKey(threadKey string) *RoomsConversationsMessagesCall {
+	c.urlParams_.Set("threadKey", threadKey)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *RoomsConversationsMessagesCall) Fields(s ...googleapi.Field) *RoomsConversationsMessagesCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *RoomsConversationsMessagesCall) Context(ctx context.Context) *RoomsConversationsMessagesCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *RoomsConversationsMessagesCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RoomsConversationsMessagesCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.message)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v1/{+parent}/messages")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"parent": c.parent,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "chat.rooms.conversations.messages" call.
+// Exactly one of *Message or error will be non-nil. Any non-2xx status
+// code is an error. Response headers are in either
+// *Message.ServerResponse.Header or (if a response was returned at all)
+// in error.(*googleapi.Error).Header. Use googleapi.IsNotModified to
+// check whether the returned error was because http.StatusNotModified
+// was returned.
+func (c *RoomsConversationsMessagesCall) Do(opts ...googleapi.CallOption) (*Message, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &Message{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Legacy path for creating message. Calling these will result in a BadRequest response.",
+	//   "flatPath": "v1/rooms/{roomsId}/conversations/{conversationsId}/messages",
+	//   "httpMethod": "POST",
+	//   "id": "chat.rooms.conversations.messages",
+	//   "parameterOrder": [
+	//     "parent"
+	//   ],
+	//   "parameters": {
+	//     "parent": {
+	//       "description": "Required. Space resource name, in the form \"spaces/*\". Example: spaces/AAAAMpdlehY",
+	//       "location": "path",
+	//       "pattern": "^rooms/[^/]+/conversations/[^/]+$",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "threadKey": {
+	//       "description": "Opaque thread identifier string that can be specified to group messages into a single thread. If this is the first message with a given thread identifier, a new thread is created. Subsequent messages with the same thread identifier will be posted into the same thread. This relieves bots and webhooks from having to store the Hangouts Chat thread ID of a thread (created earlier by them) to post further updates to it. Has no effect if thread field, corresponding to an existing thread, is set in message.",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v1/{+parent}/messages",
+	//   "request": {
+	//     "$ref": "Message"
+	//   },
+	//   "response": {
+	//     "$ref": "Message"
+	//   }
+	// }
+
 }
 
 // method id "chat.spaces.get":
@@ -1413,7 +2470,7 @@ func (c *SpacesGetCall) Header() http.Header {
 
 func (c *SpacesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1484,7 +2541,7 @@ func (c *SpacesGetCall) Do(opts ...googleapi.CallOption) (*Space, error) {
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required. Resource name of the space, in the form \"spaces/*\".\n\nExample: spaces/AAAAMpdlehY",
+	//       "description": "Required. Resource name of the space, in the form \"spaces/*\". Example: spaces/AAAAMpdlehY",
 	//       "location": "path",
 	//       "pattern": "^spaces/[^/]+$",
 	//       "required": true,
@@ -1516,9 +2573,8 @@ func (r *SpacesService) List() *SpacesListCall {
 }
 
 // PageSize sets the optional parameter "pageSize": Requested page size.
-// The value is capped at 1000.
-// Server may return fewer results than requested.
-// If unspecified, server will default to 100.
+// The value is capped at 1000. Server may return fewer results than
+// requested. If unspecified, server will default to 100.
 func (c *SpacesListCall) PageSize(pageSize int64) *SpacesListCall {
 	c.urlParams_.Set("pageSize", fmt.Sprint(pageSize))
 	return c
@@ -1568,7 +2624,7 @@ func (c *SpacesListCall) Header() http.Header {
 
 func (c *SpacesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1634,7 +2690,7 @@ func (c *SpacesListCall) Do(opts ...googleapi.CallOption) (*ListSpacesResponse, 
 	//   "parameterOrder": [],
 	//   "parameters": {
 	//     "pageSize": {
-	//       "description": "Requested page size. The value is capped at 1000.\nServer may return fewer results than requested.\nIf unspecified, server will default to 100.",
+	//       "description": "Requested page size. The value is capped at 1000. Server may return fewer results than requested. If unspecified, server will default to 100.",
 	//       "format": "int32",
 	//       "location": "query",
 	//       "type": "integer"
@@ -1729,7 +2785,7 @@ func (c *SpacesMembersGetCall) Header() http.Header {
 
 func (c *SpacesMembersGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1800,7 +2856,7 @@ func (c *SpacesMembersGetCall) Do(opts ...googleapi.CallOption) (*Membership, er
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required. Resource name of the membership to be retrieved, in the form\n\"spaces/*/members/*\".\n\nExample: spaces/AAAAMpdlehY/members/105115627578887013105",
+	//       "description": "Required. Resource name of the membership to be retrieved, in the form \"spaces/*/members/*\". Example: spaces/AAAAMpdlehY/members/105115627578887013105",
 	//       "location": "path",
 	//       "pattern": "^spaces/[^/]+/members/[^/]+$",
 	//       "required": true,
@@ -1834,9 +2890,8 @@ func (r *SpacesMembersService) List(parent string) *SpacesMembersListCall {
 }
 
 // PageSize sets the optional parameter "pageSize": Requested page size.
-// The value is capped at 1000.
-// Server may return fewer results than requested.
-// If unspecified, server will default to 100.
+// The value is capped at 1000. Server may return fewer results than
+// requested. If unspecified, server will default to 100.
 func (c *SpacesMembersListCall) PageSize(pageSize int64) *SpacesMembersListCall {
 	c.urlParams_.Set("pageSize", fmt.Sprint(pageSize))
 	return c
@@ -1886,7 +2941,7 @@ func (c *SpacesMembersListCall) Header() http.Header {
 
 func (c *SpacesMembersListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1957,7 +3012,7 @@ func (c *SpacesMembersListCall) Do(opts ...googleapi.CallOption) (*ListMembershi
 	//   ],
 	//   "parameters": {
 	//     "pageSize": {
-	//       "description": "Requested page size. The value is capped at 1000.\nServer may return fewer results than requested.\nIf unspecified, server will default to 100.",
+	//       "description": "Requested page size. The value is capped at 1000. Server may return fewer results than requested. If unspecified, server will default to 100.",
 	//       "format": "int32",
 	//       "location": "query",
 	//       "type": "integer"
@@ -1968,7 +3023,7 @@ func (c *SpacesMembersListCall) Do(opts ...googleapi.CallOption) (*ListMembershi
 	//       "type": "string"
 	//     },
 	//     "parent": {
-	//       "description": "Required. The resource name of the space for which membership list is to be\nfetched, in the form \"spaces/*\".\n\nExample: spaces/AAAAMpdlehY",
+	//       "description": "Required. The resource name of the space for which membership list is to be fetched, in the form \"spaces/*\". Example: spaces/AAAAMpdlehY",
 	//       "location": "path",
 	//       "pattern": "^spaces/[^/]+$",
 	//       "required": true,
@@ -2024,19 +3079,14 @@ func (r *SpacesMessagesService) Create(parent string, message *Message) *SpacesM
 }
 
 // ThreadKey sets the optional parameter "threadKey": Opaque thread
-// identifier string that can be specified to group messages
-// into a single thread. If this is the first message with a given
-// thread
+// identifier string that can be specified to group messages into a
+// single thread. If this is the first message with a given thread
 // identifier, a new thread is created. Subsequent messages with the
-// same
-// thread identifier will be posted into the same thread. This relieves
-// bots
-// and webhooks from having to store the Hangouts Chat thread ID of a
-// thread (created earlier by them) to post
-// further updates to it.
-//
-// Has no effect if thread field,
-// corresponding to an existing thread, is set in message.
+// same thread identifier will be posted into the same thread. This
+// relieves bots and webhooks from having to store the Hangouts Chat
+// thread ID of a thread (created earlier by them) to post further
+// updates to it. Has no effect if thread field, corresponding to an
+// existing thread, is set in message.
 func (c *SpacesMessagesCreateCall) ThreadKey(threadKey string) *SpacesMessagesCreateCall {
 	c.urlParams_.Set("threadKey", threadKey)
 	return c
@@ -2069,7 +3119,7 @@ func (c *SpacesMessagesCreateCall) Header() http.Header {
 
 func (c *SpacesMessagesCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2142,14 +3192,14 @@ func (c *SpacesMessagesCreateCall) Do(opts ...googleapi.CallOption) (*Message, e
 	//   ],
 	//   "parameters": {
 	//     "parent": {
-	//       "description": "Required. Space resource name, in the form \"spaces/*\".\nExample: spaces/AAAAMpdlehY",
+	//       "description": "Required. Space resource name, in the form \"spaces/*\". Example: spaces/AAAAMpdlehY",
 	//       "location": "path",
 	//       "pattern": "^spaces/[^/]+$",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "threadKey": {
-	//       "description": "Opaque thread identifier string that can be specified to group messages\ninto a single thread. If this is the first message with a given thread\nidentifier, a new thread is created. Subsequent messages with the same\nthread identifier will be posted into the same thread. This relieves bots\nand webhooks from having to store the Hangouts Chat thread ID of a thread (created earlier by them) to post\nfurther updates to it.\n\nHas no effect if thread field,\ncorresponding to an existing thread, is set in message.",
+	//       "description": "Opaque thread identifier string that can be specified to group messages into a single thread. If this is the first message with a given thread identifier, a new thread is created. Subsequent messages with the same thread identifier will be posted into the same thread. This relieves bots and webhooks from having to store the Hangouts Chat thread ID of a thread (created earlier by them) to post further updates to it. Has no effect if thread field, corresponding to an existing thread, is set in message.",
 	//       "location": "query",
 	//       "type": "string"
 	//     }
@@ -2209,7 +3259,7 @@ func (c *SpacesMessagesDeleteCall) Header() http.Header {
 
 func (c *SpacesMessagesDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2277,7 +3327,7 @@ func (c *SpacesMessagesDeleteCall) Do(opts ...googleapi.CallOption) (*Empty, err
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required. Resource name of the message to be deleted, in the form\n\"spaces/*/messages/*\"\n\nExample: spaces/AAAAMpdlehY/messages/UMxbHmzDlr4.UMxbHmzDlr4",
+	//       "description": "Required. Resource name of the message to be deleted, in the form \"spaces/*/messages/*\" Example: spaces/AAAAMpdlehY/messages/UMxbHmzDlr4.UMxbHmzDlr4",
 	//       "location": "path",
 	//       "pattern": "^spaces/[^/]+/messages/[^/]+$",
 	//       "required": true,
@@ -2347,7 +3397,7 @@ func (c *SpacesMessagesGetCall) Header() http.Header {
 
 func (c *SpacesMessagesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2418,7 +3468,7 @@ func (c *SpacesMessagesGetCall) Do(opts ...googleapi.CallOption) (*Message, erro
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required. Resource name of the message to be retrieved, in the form\n\"spaces/*/messages/*\".\n\nExample: spaces/AAAAMpdlehY/messages/UMxbHmzDlr4.UMxbHmzDlr4",
+	//       "description": "Required. Resource name of the message to be retrieved, in the form \"spaces/*/messages/*\". Example: spaces/AAAAMpdlehY/messages/UMxbHmzDlr4.UMxbHmzDlr4",
 	//       "location": "path",
 	//       "pattern": "^spaces/[^/]+/messages/[^/]+$",
 	//       "required": true,
@@ -2453,9 +3503,8 @@ func (r *SpacesMessagesService) Update(name string, message *Message) *SpacesMes
 }
 
 // UpdateMask sets the optional parameter "updateMask": Required. The
-// field paths to be updated.
-//
-// Currently supported field paths: "text", "cards".
+// field paths to be updated, comma separated if there are multiple.
+// Currently supported field paths: * text * cards
 func (c *SpacesMessagesUpdateCall) UpdateMask(updateMask string) *SpacesMessagesUpdateCall {
 	c.urlParams_.Set("updateMask", updateMask)
 	return c
@@ -2488,7 +3537,7 @@ func (c *SpacesMessagesUpdateCall) Header() http.Header {
 
 func (c *SpacesMessagesUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2561,14 +3610,14 @@ func (c *SpacesMessagesUpdateCall) Do(opts ...googleapi.CallOption) (*Message, e
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Resource name, in the form \"spaces/*/messages/*\".\n\nExample: spaces/AAAAMpdlehY/messages/UMxbHmzDlr4.UMxbHmzDlr4",
+	//       "description": "Resource name, in the form \"spaces/*/messages/*\". Example: spaces/AAAAMpdlehY/messages/UMxbHmzDlr4.UMxbHmzDlr4",
 	//       "location": "path",
 	//       "pattern": "^spaces/[^/]+/messages/[^/]+$",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "updateMask": {
-	//       "description": "Required. The field paths to be updated.\n\nCurrently supported field paths: \"text\", \"cards\".",
+	//       "description": "Required. The field paths to be updated, comma separated if there are multiple. Currently supported field paths: * text * cards",
 	//       "format": "google-fieldmask",
 	//       "location": "query",
 	//       "type": "string"
@@ -2580,6 +3629,148 @@ func (c *SpacesMessagesUpdateCall) Do(opts ...googleapi.CallOption) (*Message, e
 	//   },
 	//   "response": {
 	//     "$ref": "Message"
+	//   }
+	// }
+
+}
+
+// method id "chat.spaces.messages.attachments.get":
+
+type SpacesMessagesAttachmentsGetCall struct {
+	s            *Service
+	name         string
+	urlParams_   gensupport.URLParams
+	ifNoneMatch_ string
+	ctx_         context.Context
+	header_      http.Header
+}
+
+// Get: Gets the metadata of a message attachment. The attachment data
+// is fetched using the media API.
+func (r *SpacesMessagesAttachmentsService) Get(name string) *SpacesMessagesAttachmentsGetCall {
+	c := &SpacesMessagesAttachmentsGetCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.name = name
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *SpacesMessagesAttachmentsGetCall) Fields(s ...googleapi.Field) *SpacesMessagesAttachmentsGetCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets the optional parameter which makes the operation
+// fail if the object's ETag matches the given value. This is useful for
+// getting updates only after the object has changed since the last
+// request. Use googleapi.IsNotModified to check whether the response
+// error from Do is the result of In-None-Match.
+func (c *SpacesMessagesAttachmentsGetCall) IfNoneMatch(entityTag string) *SpacesMessagesAttachmentsGetCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *SpacesMessagesAttachmentsGetCall) Context(ctx context.Context) *SpacesMessagesAttachmentsGetCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *SpacesMessagesAttachmentsGetCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *SpacesMessagesAttachmentsGetCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v1/{+name}")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"name": c.name,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "chat.spaces.messages.attachments.get" call.
+// Exactly one of *Attachment or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Attachment.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *SpacesMessagesAttachmentsGetCall) Do(opts ...googleapi.CallOption) (*Attachment, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &Attachment{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Gets the metadata of a message attachment. The attachment data is fetched using the media API.",
+	//   "flatPath": "v1/spaces/{spacesId}/messages/{messagesId}/attachments/{attachmentsId}",
+	//   "httpMethod": "GET",
+	//   "id": "chat.spaces.messages.attachments.get",
+	//   "parameterOrder": [
+	//     "name"
+	//   ],
+	//   "parameters": {
+	//     "name": {
+	//       "description": "Resource name of the attachment, in the form \"spaces/*/messages/*/attachments/*\".",
+	//       "location": "path",
+	//       "pattern": "^spaces/[^/]+/messages/[^/]+/attachments/[^/]+$",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v1/{+name}",
+	//   "response": {
+	//     "$ref": "Attachment"
 	//   }
 	// }
 

@@ -1,4 +1,4 @@
-// Copyright 2019 Google LLC.
+// Copyright 2020 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,7 +6,7 @@
 
 // Package playcustomapp provides access to the Google Play Custom App Publishing API.
 //
-// For product documentation, see: https://developers.google.com/android/work/play/custom-app-api
+// For product documentation, see: https://developers.google.com/android/work/play/custom-app-api/
 //
 // Creating a client
 //
@@ -49,9 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
 	option "google.golang.org/api/option"
+	internaloption "google.golang.org/api/option/internaloption"
 	htransport "google.golang.org/api/transport/http"
 )
 
@@ -68,11 +69,13 @@ var _ = googleapi.Version
 var _ = errors.New
 var _ = strings.Replace
 var _ = context.Canceled
+var _ = internaloption.WithDefaultEndpoint
 
 const apiId = "playcustomapp:v1"
 const apiName = "playcustomapp"
 const apiVersion = "v1"
-const basePath = "https://www.googleapis.com/playcustomapp/v1/accounts/"
+const basePath = "https://playcustomapp.googleapis.com/"
+const mtlsBasePath = "https://playcustomapp.mtls.googleapis.com/"
 
 // OAuth2 scopes used by this API.
 const (
@@ -87,6 +90,8 @@ func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, err
 	)
 	// NOTE: prepend, so we don't override user-specified scopes.
 	opts = append([]option.ClientOption{scopesOption}, opts...)
+	opts = append(opts, internaloption.WithDefaultEndpoint(basePath))
+	opts = append(opts, internaloption.WithDefaultMTLSEndpoint(mtlsBasePath))
 	client, endpoint, err := htransport.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -156,6 +161,10 @@ type CustomApp struct {
 	// LanguageCode: Default listing language in BCP 47 format.
 	LanguageCode string `json:"languageCode,omitempty"`
 
+	// PackageName: Output only. Package name of the created Android app.
+	// Only present in the API response.
+	PackageName string `json:"packageName,omitempty"`
+
 	// Title: Title for the Android app.
 	Title string `json:"title,omitempty"`
 
@@ -198,7 +207,7 @@ type AccountsCustomAppsCreateCall struct {
 	header_    http.Header
 }
 
-// Create: Create and publish a new custom app.
+// Create: Creates a new custom app.
 func (r *AccountsCustomAppsService) Create(account int64, customapp *CustomApp) *AccountsCustomAppsCreateCall {
 	c := &AccountsCustomAppsCreateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.account = account
@@ -272,7 +281,7 @@ func (c *AccountsCustomAppsCreateCall) Header() http.Header {
 
 func (c *AccountsCustomAppsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -285,9 +294,9 @@ func (c *AccountsCustomAppsCreateCall) doRequest(alt string) (*http.Response, er
 	reqHeaders.Set("Content-Type", "application/json")
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
-	urls := googleapi.ResolveRelative(c.s.BasePath, "{account}/customApps")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "playcustomapp/v1/accounts/{account}/customApps")
 	if c.mediaInfo_ != nil {
-		urls = strings.Replace(urls, "https://www.googleapis.com/", "https://www.googleapis.com/upload/", 1)
+		urls = googleapi.ResolveRelative(c.s.BasePath, "/upload/playcustomapp/v1/accounts/{account}/customApps")
 		c.urlParams_.Set("uploadType", c.mediaInfo_.UploadType())
 	}
 	if body == nil {
@@ -364,14 +373,15 @@ func (c *AccountsCustomAppsCreateCall) Do(opts ...googleapi.CallOption) (*Custom
 	}
 	return ret, nil
 	// {
-	//   "description": "Create and publish a new custom app.",
+	//   "description": "Creates a new custom app.",
+	//   "flatPath": "playcustomapp/v1/accounts/{account}/customApps",
 	//   "httpMethod": "POST",
 	//   "id": "playcustomapp.accounts.customApps.create",
 	//   "mediaUpload": {
 	//     "accept": [
 	//       "*/*"
 	//     ],
-	//     "maxSize": "100MB",
+	//     "maxSize": "10737418240",
 	//     "protocols": {
 	//       "resumable": {
 	//         "multipart": true,
@@ -395,7 +405,7 @@ func (c *AccountsCustomAppsCreateCall) Do(opts ...googleapi.CallOption) (*Custom
 	//       "type": "string"
 	//     }
 	//   },
-	//   "path": "{account}/customApps",
+	//   "path": "playcustomapp/v1/accounts/{account}/customApps",
 	//   "request": {
 	//     "$ref": "CustomApp"
 	//   },

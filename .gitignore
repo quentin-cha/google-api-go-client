@@ -1,3 +1,7 @@
+# ignore sed backup files
+*-r
+*-e
+
 _obj/
 *_testmain.go
 clientid.dat
@@ -10,3 +14,6 @@ clientsecret.dat
 *.out
 *.test
 *.exe
+
+.idea/*
+.vscode/*

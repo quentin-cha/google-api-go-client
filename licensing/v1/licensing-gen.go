@@ -1,4 +1,4 @@
-// Copyright 2019 Google LLC.
+// Copyright 2020 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,7 +6,7 @@
 
 // Package licensing provides access to the Enterprise License Manager API.
 //
-// For product documentation, see: https://developers.google.com/google-apps/licensing/
+// For product documentation, see: https://developers.google.com/admin-sdk/licensing/
 //
 // Creating a client
 //
@@ -49,9 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
 	option "google.golang.org/api/option"
+	internaloption "google.golang.org/api/option/internaloption"
 	htransport "google.golang.org/api/transport/http"
 )
 
@@ -68,11 +69,13 @@ var _ = googleapi.Version
 var _ = errors.New
 var _ = strings.Replace
 var _ = context.Canceled
+var _ = internaloption.WithDefaultEndpoint
 
 const apiId = "licensing:v1"
 const apiName = "licensing"
 const apiVersion = "v1"
-const basePath = "https://www.googleapis.com/apps/licensing/v1/product/"
+const basePath = "https://licensing.googleapis.com/"
+const mtlsBasePath = "https://licensing.mtls.googleapis.com/"
 
 // OAuth2 scopes used by this API.
 const (
@@ -87,6 +90,8 @@ func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, err
 	)
 	// NOTE: prepend, so we don't override user-specified scopes.
 	opts = append([]option.ClientOption{scopesOption}, opts...)
+	opts = append(opts, internaloption.WithDefaultEndpoint(basePath))
+	opts = append(opts, internaloption.WithDefaultMTLSEndpoint(mtlsBasePath))
 	client, endpoint, err := htransport.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -139,15 +144,29 @@ type LicenseAssignmentsService struct {
 	s *Service
 }
 
-// LicenseAssignment: Template for LiscenseAssignment Resource
+// Empty: A generic empty message that you can re-use to avoid defining
+// duplicated empty messages in your APIs. A typical example is to use
+// it as the request or the response type of an API method. For
+// instance: service Foo { rpc Bar(google.protobuf.Empty) returns
+// (google.protobuf.Empty); } The JSON representation for `Empty` is
+// empty JSON object `{}`.
+type Empty struct {
+	// ServerResponse contains the HTTP response code and headers from the
+	// server.
+	googleapi.ServerResponse `json:"-"`
+}
+
+// LicenseAssignment: Representation of a license assignment.
 type LicenseAssignment struct {
 	// Etags: ETag of the resource.
 	Etags string `json:"etags,omitempty"`
 
-	// Kind: Identifies the resource as a LicenseAssignment.
+	// Kind: Identifies the resource as a LicenseAssignment, which is
+	// `licensing#licenseAssignment`.
 	Kind string `json:"kind,omitempty"`
 
-	// ProductId: Id of the product.
+	// ProductId: A product's unique identifier. For more information about
+	// products in this version of the API, see Product and SKU IDs.
 	ProductId string `json:"productId,omitempty"`
 
 	// ProductName: Display Name of the product.
@@ -156,13 +175,19 @@ type LicenseAssignment struct {
 	// SelfLink: Link to this page.
 	SelfLink string `json:"selfLink,omitempty"`
 
-	// SkuId: Id of the sku of the product.
+	// SkuId: A product SKU's unique identifier. For more information about
+	// available SKUs in this version of the API, see Products and SKUs.
 	SkuId string `json:"skuId,omitempty"`
 
 	// SkuName: Display Name of the sku of the product.
 	SkuName string `json:"skuName,omitempty"`
 
-	// UserId: Email id of the user.
+	// UserId: The user's current primary email address. If the user's email
+	// address changes, use the new email address in your API requests.
+	// Since a `userId` is subject to change, do not use a `userId` value as
+	// a key for persistent data. This key could break if the current user's
+	// email address changes. If the `userId` is suspended, the license
+	// status changes.
 	UserId string `json:"userId,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
@@ -192,8 +217,7 @@ func (s *LicenseAssignment) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// LicenseAssignmentInsert: Template for LicenseAssignment Insert
-// request
+// LicenseAssignmentInsert: Representation of a license assignment.
 type LicenseAssignmentInsert struct {
 	// UserId: Email id of the user
 	UserId string `json:"userId,omitempty"`
@@ -221,8 +245,6 @@ func (s *LicenseAssignmentInsert) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// LicenseAssignmentList: LicesnseAssignment List for a given
-// product/sku for a customer.
 type LicenseAssignmentList struct {
 	// Etag: ETag of the resource.
 	Etag string `json:"etag,omitempty"`
@@ -233,9 +255,11 @@ type LicenseAssignmentList struct {
 	// Kind: Identifies the resource as a collection of LicenseAssignments.
 	Kind string `json:"kind,omitempty"`
 
-	// NextPageToken: The continuation token, used to page through large
-	// result sets. Provide this value in a subsequent request to return the
-	// next page of results.
+	// NextPageToken: The token that you must submit in a subsequent request
+	// to retrieve additional license results matching your query
+	// parameters. The `maxResults` query string is related to the
+	// `nextPageToken` since `maxResults` determines how many entries are
+	// returned on each next page.
 	NextPageToken string `json:"nextPageToken,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
@@ -277,7 +301,7 @@ type LicenseAssignmentsDeleteCall struct {
 	header_    http.Header
 }
 
-// Delete: Revoke License.
+// Delete: Revoke a license.
 func (r *LicenseAssignmentsService) Delete(productId string, skuId string, userId string) *LicenseAssignmentsDeleteCall {
 	c := &LicenseAssignmentsDeleteCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.productId = productId
@@ -313,7 +337,7 @@ func (c *LicenseAssignmentsDeleteCall) Header() http.Header {
 
 func (c *LicenseAssignmentsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -321,7 +345,7 @@ func (c *LicenseAssignmentsDeleteCall) doRequest(alt string) (*http.Response, er
 	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
-	urls := googleapi.ResolveRelative(c.s.BasePath, "{productId}/sku/{skuId}/user/{userId}")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "apps/licensing/v1/product/{productId}/sku/{skuId}/user/{userId}")
 	urls += "?" + c.urlParams_.Encode()
 	req, err := http.NewRequest("DELETE", urls, body)
 	if err != nil {
@@ -337,19 +361,45 @@ func (c *LicenseAssignmentsDeleteCall) doRequest(alt string) (*http.Response, er
 }
 
 // Do executes the "licensing.licenseAssignments.delete" call.
-func (c *LicenseAssignmentsDeleteCall) Do(opts ...googleapi.CallOption) error {
+// Exactly one of *Empty or error will be non-nil. Any non-2xx status
+// code is an error. Response headers are in either
+// *Empty.ServerResponse.Header or (if a response was returned at all)
+// in error.(*googleapi.Error).Header. Use googleapi.IsNotModified to
+// check whether the returned error was because http.StatusNotModified
+// was returned.
+func (c *LicenseAssignmentsDeleteCall) Do(opts ...googleapi.CallOption) (*Empty, error) {
 	gensupport.SetOptions(c.urlParams_, opts...)
 	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer googleapi.CloseBody(res)
 	if err := googleapi.CheckResponse(res); err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	ret := &Empty{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
 	// {
-	//   "description": "Revoke License.",
+	//   "description": "Revoke a license.",
+	//   "flatPath": "apps/licensing/v1/product/{productId}/sku/{skuId}/user/{userId}",
 	//   "httpMethod": "DELETE",
 	//   "id": "licensing.licenseAssignments.delete",
 	//   "parameterOrder": [
@@ -359,25 +409,28 @@ func (c *LicenseAssignmentsDeleteCall) Do(opts ...googleapi.CallOption) error {
 	//   ],
 	//   "parameters": {
 	//     "productId": {
-	//       "description": "Name for product",
+	//       "description": "A product's unique identifier. For more information about products in this version of the API, see Products and SKUs.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "skuId": {
-	//       "description": "Name for sku",
+	//       "description": "A product SKU's unique identifier. For more information about available SKUs in this version of the API, see Products and SKUs.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "userId": {
-	//       "description": "email id or unique Id of the user",
+	//       "description": "The user's current primary email address. If the user's email address changes, use the new email address in your API requests. Since a `userId` is subject to change, do not use a `userId` value as a key for persistent data. This key could break if the current user's email address changes. If the `userId` is suspended, the license status changes.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     }
 	//   },
-	//   "path": "{productId}/sku/{skuId}/user/{userId}",
+	//   "path": "apps/licensing/v1/product/{productId}/sku/{skuId}/user/{userId}",
+	//   "response": {
+	//     "$ref": "Empty"
+	//   },
 	//   "scopes": [
 	//     "https://www.googleapis.com/auth/apps.licensing"
 	//   ]
@@ -398,8 +451,7 @@ type LicenseAssignmentsGetCall struct {
 	header_      http.Header
 }
 
-// Get: Get license assignment of a particular product and sku for a
-// user
+// Get: Get a specific user's license by product SKU.
 func (r *LicenseAssignmentsService) Get(productId string, skuId string, userId string) *LicenseAssignmentsGetCall {
 	c := &LicenseAssignmentsGetCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.productId = productId
@@ -445,7 +497,7 @@ func (c *LicenseAssignmentsGetCall) Header() http.Header {
 
 func (c *LicenseAssignmentsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -456,7 +508,7 @@ func (c *LicenseAssignmentsGetCall) doRequest(alt string) (*http.Response, error
 	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
-	urls := googleapi.ResolveRelative(c.s.BasePath, "{productId}/sku/{skuId}/user/{userId}")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "apps/licensing/v1/product/{productId}/sku/{skuId}/user/{userId}")
 	urls += "?" + c.urlParams_.Encode()
 	req, err := http.NewRequest("GET", urls, body)
 	if err != nil {
@@ -509,7 +561,8 @@ func (c *LicenseAssignmentsGetCall) Do(opts ...googleapi.CallOption) (*LicenseAs
 	}
 	return ret, nil
 	// {
-	//   "description": "Get license assignment of a particular product and sku for a user",
+	//   "description": "Get a specific user's license by product SKU.",
+	//   "flatPath": "apps/licensing/v1/product/{productId}/sku/{skuId}/user/{userId}",
 	//   "httpMethod": "GET",
 	//   "id": "licensing.licenseAssignments.get",
 	//   "parameterOrder": [
@@ -519,25 +572,25 @@ func (c *LicenseAssignmentsGetCall) Do(opts ...googleapi.CallOption) (*LicenseAs
 	//   ],
 	//   "parameters": {
 	//     "productId": {
-	//       "description": "Name for product",
+	//       "description": "A product's unique identifier. For more information about products in this version of the API, see Products and SKUs.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "skuId": {
-	//       "description": "Name for sku",
+	//       "description": "A product SKU's unique identifier. For more information about available SKUs in this version of the API, see Products and SKUs.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "userId": {
-	//       "description": "email id or unique Id of the user",
+	//       "description": "The user's current primary email address. If the user's email address changes, use the new email address in your API requests. Since a `userId` is subject to change, do not use a `userId` value as a key for persistent data. This key could break if the current user's email address changes. If the `userId` is suspended, the license status changes.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     }
 	//   },
-	//   "path": "{productId}/sku/{skuId}/user/{userId}",
+	//   "path": "apps/licensing/v1/product/{productId}/sku/{skuId}/user/{userId}",
 	//   "response": {
 	//     "$ref": "LicenseAssignment"
 	//   },
@@ -560,7 +613,7 @@ type LicenseAssignmentsInsertCall struct {
 	header_                 http.Header
 }
 
-// Insert: Assign License.
+// Insert: Assign a license.
 func (r *LicenseAssignmentsService) Insert(productId string, skuId string, licenseassignmentinsert *LicenseAssignmentInsert) *LicenseAssignmentsInsertCall {
 	c := &LicenseAssignmentsInsertCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.productId = productId
@@ -596,7 +649,7 @@ func (c *LicenseAssignmentsInsertCall) Header() http.Header {
 
 func (c *LicenseAssignmentsInsertCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -609,7 +662,7 @@ func (c *LicenseAssignmentsInsertCall) doRequest(alt string) (*http.Response, er
 	reqHeaders.Set("Content-Type", "application/json")
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
-	urls := googleapi.ResolveRelative(c.s.BasePath, "{productId}/sku/{skuId}/user")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "apps/licensing/v1/product/{productId}/sku/{skuId}/user")
 	urls += "?" + c.urlParams_.Encode()
 	req, err := http.NewRequest("POST", urls, body)
 	if err != nil {
@@ -661,7 +714,8 @@ func (c *LicenseAssignmentsInsertCall) Do(opts ...googleapi.CallOption) (*Licens
 	}
 	return ret, nil
 	// {
-	//   "description": "Assign License.",
+	//   "description": "Assign a license.",
+	//   "flatPath": "apps/licensing/v1/product/{productId}/sku/{skuId}/user",
 	//   "httpMethod": "POST",
 	//   "id": "licensing.licenseAssignments.insert",
 	//   "parameterOrder": [
@@ -670,19 +724,19 @@ func (c *LicenseAssignmentsInsertCall) Do(opts ...googleapi.CallOption) (*Licens
 	//   ],
 	//   "parameters": {
 	//     "productId": {
-	//       "description": "Name for product",
+	//       "description": "A product's unique identifier. For more information about products in this version of the API, see Products and SKUs.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "skuId": {
-	//       "description": "Name for sku",
+	//       "description": "A product SKU's unique identifier. For more information about available SKUs in this version of the API, see Products and SKUs.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     }
 	//   },
-	//   "path": "{productId}/sku/{skuId}/user",
+	//   "path": "apps/licensing/v1/product/{productId}/sku/{skuId}/user",
 	//   "request": {
 	//     "$ref": "LicenseAssignmentInsert"
 	//   },
@@ -707,8 +761,8 @@ type LicenseAssignmentsListForProductCall struct {
 	header_      http.Header
 }
 
-// ListForProduct: List license assignments for given product of the
-// customer.
+// ListForProduct: List all users assigned licenses for a specific
+// product SKU.
 func (r *LicenseAssignmentsService) ListForProduct(productId string, customerId string) *LicenseAssignmentsListForProductCall {
 	c := &LicenseAssignmentsListForProductCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.productId = productId
@@ -716,16 +770,20 @@ func (r *LicenseAssignmentsService) ListForProduct(productId string, customerId 
 	return c
 }
 
-// MaxResults sets the optional parameter "maxResults": Maximum number
-// of campaigns to return at one time. Must be positive.  Default value
-// is 100.
+// MaxResults sets the optional parameter "maxResults": The `maxResults`
+// query string determines how many entries are returned on each page of
+// a large response. This is an optional parameter. The value must be a
+// positive number.
 func (c *LicenseAssignmentsListForProductCall) MaxResults(maxResults int64) *LicenseAssignmentsListForProductCall {
 	c.urlParams_.Set("maxResults", fmt.Sprint(maxResults))
 	return c
 }
 
 // PageToken sets the optional parameter "pageToken": Token to fetch the
-// next page. By default server will return first page
+// next page of data. The `maxResults` query string is related to the
+// `pageToken` since `maxResults` determines how many entries are
+// returned on each page. This is an optional query string. If not
+// specified, the server returns the first page.
 func (c *LicenseAssignmentsListForProductCall) PageToken(pageToken string) *LicenseAssignmentsListForProductCall {
 	c.urlParams_.Set("pageToken", pageToken)
 	return c
@@ -768,7 +826,7 @@ func (c *LicenseAssignmentsListForProductCall) Header() http.Header {
 
 func (c *LicenseAssignmentsListForProductCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -779,7 +837,7 @@ func (c *LicenseAssignmentsListForProductCall) doRequest(alt string) (*http.Resp
 	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
-	urls := googleapi.ResolveRelative(c.s.BasePath, "{productId}/users")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "apps/licensing/v1/product/{productId}/users")
 	urls += "?" + c.urlParams_.Encode()
 	req, err := http.NewRequest("GET", urls, body)
 	if err != nil {
@@ -830,7 +888,8 @@ func (c *LicenseAssignmentsListForProductCall) Do(opts ...googleapi.CallOption) 
 	}
 	return ret, nil
 	// {
-	//   "description": "List license assignments for given product of the customer.",
+	//   "description": "List all users assigned licenses for a specific product SKU.",
+	//   "flatPath": "apps/licensing/v1/product/{productId}/users",
 	//   "httpMethod": "GET",
 	//   "id": "licensing.licenseAssignments.listForProduct",
 	//   "parameterOrder": [
@@ -839,14 +898,14 @@ func (c *LicenseAssignmentsListForProductCall) Do(opts ...googleapi.CallOption) 
 	//   ],
 	//   "parameters": {
 	//     "customerId": {
-	//       "description": "CustomerId represents the customer for whom licenseassignments are queried",
+	//       "description": "Customer's `customerId`. A previous version of this API accepted the primary domain name as a value for this field. If the customer is suspended, the server returns an error.",
 	//       "location": "query",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "maxResults": {
 	//       "default": "100",
-	//       "description": "Maximum number of campaigns to return at one time. Must be positive. Optional. Default value is 100.",
+	//       "description": "The `maxResults` query string determines how many entries are returned on each page of a large response. This is an optional parameter. The value must be a positive number.",
 	//       "format": "uint32",
 	//       "location": "query",
 	//       "maximum": "1000",
@@ -855,18 +914,18 @@ func (c *LicenseAssignmentsListForProductCall) Do(opts ...googleapi.CallOption) 
 	//     },
 	//     "pageToken": {
 	//       "default": "",
-	//       "description": "Token to fetch the next page.Optional. By default server will return first page",
+	//       "description": "Token to fetch the next page of data. The `maxResults` query string is related to the `pageToken` since `maxResults` determines how many entries are returned on each page. This is an optional query string. If not specified, the server returns the first page.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
 	//     "productId": {
-	//       "description": "Name for product",
+	//       "description": "A product's unique identifier. For more information about products in this version of the API, see Products and SKUs.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     }
 	//   },
-	//   "path": "{productId}/users",
+	//   "path": "apps/licensing/v1/product/{productId}/users",
 	//   "response": {
 	//     "$ref": "LicenseAssignmentList"
 	//   },
@@ -910,8 +969,8 @@ type LicenseAssignmentsListForProductAndSkuCall struct {
 	header_      http.Header
 }
 
-// ListForProductAndSku: List license assignments for given product and
-// sku of the customer.
+// ListForProductAndSku: List all users assigned licenses for a specific
+// product SKU.
 func (r *LicenseAssignmentsService) ListForProductAndSku(productId string, skuId string, customerId string) *LicenseAssignmentsListForProductAndSkuCall {
 	c := &LicenseAssignmentsListForProductAndSkuCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.productId = productId
@@ -920,16 +979,20 @@ func (r *LicenseAssignmentsService) ListForProductAndSku(productId string, skuId
 	return c
 }
 
-// MaxResults sets the optional parameter "maxResults": Maximum number
-// of campaigns to return at one time. Must be positive.  Default value
-// is 100.
+// MaxResults sets the optional parameter "maxResults": The `maxResults`
+// query string determines how many entries are returned on each page of
+// a large response. This is an optional parameter. The value must be a
+// positive number.
 func (c *LicenseAssignmentsListForProductAndSkuCall) MaxResults(maxResults int64) *LicenseAssignmentsListForProductAndSkuCall {
 	c.urlParams_.Set("maxResults", fmt.Sprint(maxResults))
 	return c
 }
 
 // PageToken sets the optional parameter "pageToken": Token to fetch the
-// next page. By default server will return first page
+// next page of data. The `maxResults` query string is related to the
+// `pageToken` since `maxResults` determines how many entries are
+// returned on each page. This is an optional query string. If not
+// specified, the server returns the first page.
 func (c *LicenseAssignmentsListForProductAndSkuCall) PageToken(pageToken string) *LicenseAssignmentsListForProductAndSkuCall {
 	c.urlParams_.Set("pageToken", pageToken)
 	return c
@@ -972,7 +1035,7 @@ func (c *LicenseAssignmentsListForProductAndSkuCall) Header() http.Header {
 
 func (c *LicenseAssignmentsListForProductAndSkuCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -983,7 +1046,7 @@ func (c *LicenseAssignmentsListForProductAndSkuCall) doRequest(alt string) (*htt
 	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
-	urls := googleapi.ResolveRelative(c.s.BasePath, "{productId}/sku/{skuId}/users")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "apps/licensing/v1/product/{productId}/sku/{skuId}/users")
 	urls += "?" + c.urlParams_.Encode()
 	req, err := http.NewRequest("GET", urls, body)
 	if err != nil {
@@ -1035,7 +1098,8 @@ func (c *LicenseAssignmentsListForProductAndSkuCall) Do(opts ...googleapi.CallOp
 	}
 	return ret, nil
 	// {
-	//   "description": "List license assignments for given product and sku of the customer.",
+	//   "description": "List all users assigned licenses for a specific product SKU.",
+	//   "flatPath": "apps/licensing/v1/product/{productId}/sku/{skuId}/users",
 	//   "httpMethod": "GET",
 	//   "id": "licensing.licenseAssignments.listForProductAndSku",
 	//   "parameterOrder": [
@@ -1045,14 +1109,14 @@ func (c *LicenseAssignmentsListForProductAndSkuCall) Do(opts ...googleapi.CallOp
 	//   ],
 	//   "parameters": {
 	//     "customerId": {
-	//       "description": "CustomerId represents the customer for whom licenseassignments are queried",
+	//       "description": "Customer's `customerId`. A previous version of this API accepted the primary domain name as a value for this field. If the customer is suspended, the server returns an error.",
 	//       "location": "query",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "maxResults": {
 	//       "default": "100",
-	//       "description": "Maximum number of campaigns to return at one time. Must be positive. Optional. Default value is 100.",
+	//       "description": "The `maxResults` query string determines how many entries are returned on each page of a large response. This is an optional parameter. The value must be a positive number.",
 	//       "format": "uint32",
 	//       "location": "query",
 	//       "maximum": "1000",
@@ -1061,24 +1125,24 @@ func (c *LicenseAssignmentsListForProductAndSkuCall) Do(opts ...googleapi.CallOp
 	//     },
 	//     "pageToken": {
 	//       "default": "",
-	//       "description": "Token to fetch the next page.Optional. By default server will return first page",
+	//       "description": "Token to fetch the next page of data. The `maxResults` query string is related to the `pageToken` since `maxResults` determines how many entries are returned on each page. This is an optional query string. If not specified, the server returns the first page.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
 	//     "productId": {
-	//       "description": "Name for product",
+	//       "description": "A product's unique identifier. For more information about products in this version of the API, see Products and SKUs.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "skuId": {
-	//       "description": "Name for sku",
+	//       "description": "A product SKU's unique identifier. For more information about available SKUs in this version of the API, see Products and SKUs.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     }
 	//   },
-	//   "path": "{productId}/sku/{skuId}/users",
+	//   "path": "apps/licensing/v1/product/{productId}/sku/{skuId}/users",
 	//   "response": {
 	//     "$ref": "LicenseAssignmentList"
 	//   },
@@ -1123,7 +1187,8 @@ type LicenseAssignmentsPatchCall struct {
 	header_           http.Header
 }
 
-// Patch: Assign License. This method supports patch semantics.
+// Patch: Reassign a user's product SKU with a different SKU in the same
+// product. This method supports patch semantics.
 func (r *LicenseAssignmentsService) Patch(productId string, skuId string, userId string, licenseassignment *LicenseAssignment) *LicenseAssignmentsPatchCall {
 	c := &LicenseAssignmentsPatchCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.productId = productId
@@ -1160,7 +1225,7 @@ func (c *LicenseAssignmentsPatchCall) Header() http.Header {
 
 func (c *LicenseAssignmentsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1173,7 +1238,7 @@ func (c *LicenseAssignmentsPatchCall) doRequest(alt string) (*http.Response, err
 	reqHeaders.Set("Content-Type", "application/json")
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
-	urls := googleapi.ResolveRelative(c.s.BasePath, "{productId}/sku/{skuId}/user/{userId}")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "apps/licensing/v1/product/{productId}/sku/{skuId}/user/{userId}")
 	urls += "?" + c.urlParams_.Encode()
 	req, err := http.NewRequest("PATCH", urls, body)
 	if err != nil {
@@ -1226,7 +1291,8 @@ func (c *LicenseAssignmentsPatchCall) Do(opts ...googleapi.CallOption) (*License
 	}
 	return ret, nil
 	// {
-	//   "description": "Assign License. This method supports patch semantics.",
+	//   "description": "Reassign a user's product SKU with a different SKU in the same product. This method supports patch semantics.",
+	//   "flatPath": "apps/licensing/v1/product/{productId}/sku/{skuId}/user/{userId}",
 	//   "httpMethod": "PATCH",
 	//   "id": "licensing.licenseAssignments.patch",
 	//   "parameterOrder": [
@@ -1236,25 +1302,25 @@ func (c *LicenseAssignmentsPatchCall) Do(opts ...googleapi.CallOption) (*License
 	//   ],
 	//   "parameters": {
 	//     "productId": {
-	//       "description": "Name for product",
+	//       "description": "A product's unique identifier. For more information about products in this version of the API, see Products and SKUs.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "skuId": {
-	//       "description": "Name for sku for which license would be revoked",
+	//       "description": "A product SKU's unique identifier. For more information about available SKUs in this version of the API, see Products and SKUs.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "userId": {
-	//       "description": "email id or unique Id of the user",
+	//       "description": "The user's current primary email address. If the user's email address changes, use the new email address in your API requests. Since a `userId` is subject to change, do not use a `userId` value as a key for persistent data. This key could break if the current user's email address changes. If the `userId` is suspended, the license status changes.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     }
 	//   },
-	//   "path": "{productId}/sku/{skuId}/user/{userId}",
+	//   "path": "apps/licensing/v1/product/{productId}/sku/{skuId}/user/{userId}",
 	//   "request": {
 	//     "$ref": "LicenseAssignment"
 	//   },
@@ -1281,7 +1347,8 @@ type LicenseAssignmentsUpdateCall struct {
 	header_           http.Header
 }
 
-// Update: Assign License.
+// Update: Reassign a user's product SKU with a different SKU in the
+// same product.
 func (r *LicenseAssignmentsService) Update(productId string, skuId string, userId string, licenseassignment *LicenseAssignment) *LicenseAssignmentsUpdateCall {
 	c := &LicenseAssignmentsUpdateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.productId = productId
@@ -1318,7 +1385,7 @@ func (c *LicenseAssignmentsUpdateCall) Header() http.Header {
 
 func (c *LicenseAssignmentsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1331,7 +1398,7 @@ func (c *LicenseAssignmentsUpdateCall) doRequest(alt string) (*http.Response, er
 	reqHeaders.Set("Content-Type", "application/json")
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
-	urls := googleapi.ResolveRelative(c.s.BasePath, "{productId}/sku/{skuId}/user/{userId}")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "apps/licensing/v1/product/{productId}/sku/{skuId}/user/{userId}")
 	urls += "?" + c.urlParams_.Encode()
 	req, err := http.NewRequest("PUT", urls, body)
 	if err != nil {
@@ -1384,7 +1451,8 @@ func (c *LicenseAssignmentsUpdateCall) Do(opts ...googleapi.CallOption) (*Licens
 	}
 	return ret, nil
 	// {
-	//   "description": "Assign License.",
+	//   "description": "Reassign a user's product SKU with a different SKU in the same product.",
+	//   "flatPath": "apps/licensing/v1/product/{productId}/sku/{skuId}/user/{userId}",
 	//   "httpMethod": "PUT",
 	//   "id": "licensing.licenseAssignments.update",
 	//   "parameterOrder": [
@@ -1394,25 +1462,25 @@ func (c *LicenseAssignmentsUpdateCall) Do(opts ...googleapi.CallOption) (*Licens
 	//   ],
 	//   "parameters": {
 	//     "productId": {
-	//       "description": "Name for product",
+	//       "description": "A product's unique identifier. For more information about products in this version of the API, see Products and SKUs.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "skuId": {
-	//       "description": "Name for sku for which license would be revoked",
+	//       "description": "A product SKU's unique identifier. For more information about available SKUs in this version of the API, see Products and SKUs.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "userId": {
-	//       "description": "email id or unique Id of the user",
+	//       "description": "The user's current primary email address. If the user's email address changes, use the new email address in your API requests. Since a `userId` is subject to change, do not use a `userId` value as a key for persistent data. This key could break if the current user's email address changes. If the `userId` is suspended, the license status changes.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     }
 	//   },
-	//   "path": "{productId}/sku/{skuId}/user/{userId}",
+	//   "path": "apps/licensing/v1/product/{productId}/sku/{skuId}/user/{userId}",
 	//   "request": {
 	//     "$ref": "LicenseAssignment"
 	//   },

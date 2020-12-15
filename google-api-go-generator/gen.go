@@ -1,4 +1,4 @@
-// Copyright 2011 Google Inc. All rights reserved.
+// Copyright 2011 Google LLC. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -32,7 +32,6 @@ import (
 
 const (
 	googleDiscoveryURL = "https://www.googleapis.com/discovery/v1/apis"
-	generatorVersion   = "2018018"
 )
 
 var (
@@ -51,14 +50,20 @@ var (
 	baseURL        = flag.String("base_url", "", "(optional) Override the default service API URL. If empty, the service's root URL will be used.")
 	headerPath     = flag.String("header_path", "", "If non-empty, prepend the contents of this file to generated services.")
 
-	gensupportPkg = flag.String("gensupport_pkg", "google.golang.org/api/gensupport", "Go package path of the 'api/gensupport' support package.")
-	googleapiPkg  = flag.String("googleapi_pkg", "google.golang.org/api/googleapi", "Go package path of the 'api/googleapi' support package.")
-	optionPkg     = flag.String("option_pkg", "google.golang.org/api/option", "Go package path of the 'api/option' support package.")
-	htransportPkg = flag.String("htransport_pkg", "google.golang.org/api/transport/http", "Go package path of the 'api/transport/http' support package.")
+	gensupportPkg     = flag.String("gensupport_pkg", "google.golang.org/api/internal/gensupport", "Go package path of the 'api/internal/gensupport' support package.")
+	googleapiPkg      = flag.String("googleapi_pkg", "google.golang.org/api/googleapi", "Go package path of the 'api/googleapi' support package.")
+	optionPkg         = flag.String("option_pkg", "google.golang.org/api/option", "Go package path of the 'api/option' support package.")
+	internalOptionPkg = flag.String("internaloption_pkg", "google.golang.org/api/option/internaloption", "Go package path of the 'api/option/internaloption' support package.")
+	htransportPkg     = flag.String("htransport_pkg", "google.golang.org/api/transport/http", "Go package path of the 'api/transport/http' support package.")
 
 	copyrightYear = flag.String("copyright_year", fmt.Sprintf("%d", time.Now().Year()), "Year for copyright.")
 
 	serviceTypes = []string{"Service", "APIService"}
+)
+
+var (
+	errOldRevision = errors.New("revision pulled older than local cached revision")
+	errNoDoc       = errors.New("could not read discovery doc")
 )
 
 // API represents an API to generate, as well as its state while it's
@@ -117,6 +122,11 @@ func (e *compileError) Error() string {
 	return fmt.Sprintf("API %s failed to compile:\n%v", e.api.ID, e.output)
 }
 
+// skipAPIGeneration is a set of APIs to not generate when generating all clients.
+var skipAPIGeneration = map[string]bool{
+	"sql:v1beta4": true,
+}
+
 func main() {
 	flag.Parse()
 
@@ -137,7 +147,10 @@ func main() {
 		matches = append(matches, api)
 		log.Printf("Generating API %s", api.ID)
 		err := api.WriteGeneratedCode()
-		if err != nil && err != errNoDoc {
+		if err == errOldRevision {
+			log.Printf("Old revision found for %s, skipping generation", api.ID)
+			continue
+		} else if err != nil && err != errNoDoc {
 			errors = append(errors, &generateError{api, err})
 			continue
 		}
@@ -182,6 +195,9 @@ func (a *API) want() bool {
 		if _, err := os.Stat(a.JSONFile()); os.IsNotExist(err) {
 			return false
 		}
+	}
+	if skipAPIGeneration[a.ID] && *apiToGenerate == "*" {
+		return false
 	}
 	return *apiToGenerate == "*" || *apiToGenerate == a.ID
 }
@@ -275,6 +291,40 @@ func apiFromFile(file string) (*API, error) {
 		doc:       doc,
 	}
 	return a, nil
+}
+
+func checkAndUpdateSpecFile(file string, contents []byte) error {
+	// check if file exists
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		return writeFile(file, contents)
+	}
+	existing, err := ioutil.ReadFile(file)
+	if err != nil {
+		return err
+	}
+	if err := isNewerRevision(existing, contents); err != nil {
+		return err
+	}
+	return writeFile(file, contents)
+}
+
+// isNewerRevision returns nil if the contents of new has a newer revision than
+// the contents of old.
+func isNewerRevision(old []byte, new []byte) error {
+	type docRevision struct {
+		Revision string `json:"revision"`
+	}
+	var oldDoc, newDoc docRevision
+	if err := json.Unmarshal(old, &oldDoc); err != nil {
+		return err
+	}
+	if err := json.Unmarshal(new, &newDoc); err != nil {
+		return err
+	}
+	if newDoc.Revision < oldDoc.Revision {
+		return errOldRevision
+	}
+	return nil
 }
 
 func writeFile(file string, contents []byte) error {
@@ -407,6 +457,12 @@ func (a *API) Target() string {
 // ServiceType returns the name of the type to use for the root API struct
 // (typically "Service").
 func (a *API) ServiceType() string {
+	if a.Name == "monitoring" && a.Version == "v3" {
+		// HACK(deklerk) monitoring:v3 should always use call its overall
+		// service struct "Service", even though there is a "Service" in its
+		// schema (we re-map it to MService later).
+		return "Service"
+	}
 	switch a.Name {
 	case "appengine", "content": // retained for historical compatibility.
 		return "APIService"
@@ -437,6 +493,18 @@ func (a *API) apiBaseURL() string {
 		base, rel = *apisURL, a.doc.BasePath
 	}
 	return resolveRelative(base, rel)
+}
+
+func (a *API) mtlsAPIBaseURL() string {
+	if a.doc.MTLSRootURL != "" {
+		return resolveRelative(a.doc.MTLSRootURL, a.doc.ServicePath)
+	}
+	// TODO(andyrzhao): Remove the workaround below when MTLSRootURL becomes available in
+	// compute discovery doc, after compute migrates to OP discovery doc gen (ETA 2021).
+	if a.doc.MTLSRootURL == "" && a.doc.RootURL == "https://compute.googleapis.com/" {
+		return resolveRelative("https://compute.mtls.googleapis.com/", a.doc.ServicePath)
+	}
+	return ""
 }
 
 func (a *API) needsDataWrapper() bool {
@@ -482,10 +550,9 @@ func (a *API) JSONFile() string {
 	return filepath.Join(a.SourceDir(), a.Package()+"-api.json")
 }
 
-var errNoDoc = errors.New("could not read discovery doc")
-
 // WriteGeneratedCode generates code for a.
-// It returns errNoDoc if we couldn't read the discovery doc.
+// It returns errNoDoc if we couldn't read the discovery doc or errOldRevision
+// if the API spec file being pulled in is older than the local cache.
 func (a *API) WriteGeneratedCode() error {
 	genfilename := *output
 	jsonBytes := a.jsonBytes()
@@ -495,7 +562,7 @@ func (a *API) WriteGeneratedCode() error {
 		return errNoDoc
 	}
 	if genfilename == "" {
-		if err := writeFile(a.JSONFile(), jsonBytes); err != nil {
+		if err := checkAndUpdateSpecFile(a.JSONFile(), jsonBytes); err != nil {
 			return err
 		}
 		outdir := a.SourceDir()
@@ -570,7 +637,7 @@ func (a *API) GenerateCode() ([]byte, error) {
 `, *copyrightYear)
 
 	pn("// Package %s provides access to the %s.", pkg, a.doc.Title)
-	if r := replacementPackage[pkg]; r != "" {
+	if r := replacementPackage.Get(pkg, a.Version); r != "" {
 		pn("//")
 		pn("// This package is DEPRECATED. Use package %s instead.", r)
 	}
@@ -599,7 +666,7 @@ func (a *API) GenerateCode() ([]byte, error) {
 		pn(`// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:`)
 		pn("//")
 		// NOTE: the first scope tends to be the broadest. Use the last one to demonstrate restriction.
-		pn("//   %sService, err := %s.NewService(ctx, option.WithScopes(%s.%s))", pkg, pkg, pkg, scopeIdentifierFromURL(a.doc.Auth.OAuth2Scopes[len(a.doc.Auth.OAuth2Scopes)-1].URL))
+		pn("//   %sService, err := %s.NewService(ctx, option.WithScopes(%s.%s))", pkg, pkg, pkg, scopeIdentifier(a.doc.Auth.OAuth2Scopes[len(a.doc.Auth.OAuth2Scopes)-1]))
 		pn("//")
 	}
 	pn("// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:")
@@ -639,6 +706,7 @@ func (a *API) GenerateCode() ([]byte, error) {
 		{*gensupportPkg, "gensupport"},
 		{*googleapiPkg, "googleapi"},
 		{*optionPkg, "option"},
+		{*internalOptionPkg, "internaloption"},
 		{*htransportPkg, "htransport"},
 	} {
 		pn("  %s %q", imp.lname, imp.pkg)
@@ -657,11 +725,15 @@ func (a *API) GenerateCode() ([]byte, error) {
 	pn("var _ = errors.New")
 	pn("var _ = strings.Replace")
 	pn("var _ = context.Canceled")
+	pn("var _ = internaloption.WithDefaultEndpoint")
 	pn("")
 	pn("const apiId = %q", a.doc.ID)
 	pn("const apiName = %q", a.doc.Name)
 	pn("const apiVersion = %q", a.doc.Version)
 	pn("const basePath = %q", a.apiBaseURL())
+	if mtlsBase := a.mtlsAPIBaseURL(); mtlsBase != "" {
+		pn("const mtlsBasePath = %q", mtlsBase)
+	}
 
 	a.generateScopeConstants()
 	a.PopulateSchemas()
@@ -677,11 +749,15 @@ func (a *API) GenerateCode() ([]byte, error) {
 	if len(a.doc.Auth.OAuth2Scopes) != 0 {
 		pn("scopesOption := option.WithScopes(")
 		for _, scope := range a.doc.Auth.OAuth2Scopes {
-			pn("%q,", scope.URL)
+			pn("%q,", scope.ID)
 		}
 		pn(")")
 		pn("// NOTE: prepend, so we don't override user-specified scopes.")
 		pn("opts = append([]option.ClientOption{scopesOption}, opts...)")
+	}
+	pn("opts = append(opts, internaloption.WithDefaultEndpoint(basePath))")
+	if a.mtlsAPIBaseURL() != "" {
+		pn("opts = append(opts, internaloption.WithDefaultMTLSEndpoint(mtlsBasePath))")
 	}
 	pn("client, endpoint, err := htransport.NewClient(ctx, opts...)")
 	pn("if err != nil { return nil, err }")
@@ -764,16 +840,21 @@ func (a *API) generateScopeConstants() {
 			a.p("\n")
 		}
 		n++
-		ident := scopeIdentifierFromURL(scope.URL)
+		ident := scopeIdentifier(scope)
 		if scope.Description != "" {
 			a.p("%s", asComment("\t", scope.Description))
 		}
-		a.pn("\t%s = %q", ident, scope.URL)
+		a.pn("\t%s = %q", ident, scope.ID)
 	}
 	a.p(")\n\n")
 }
 
-func scopeIdentifierFromURL(urlStr string) string {
+func scopeIdentifier(s disco.Scope) string {
+	if s.ID == "openid" {
+		return "OpenIDScope"
+	}
+
+	urlStr := s.ID
 	const prefix = "https://www.googleapis.com/auth/"
 	if !strings.HasPrefix(urlStr, prefix) {
 		const https = "https://"
@@ -884,9 +965,12 @@ var pointerFields = []fieldName{
 	{api: "cloudmonitoring:v2beta2", schema: "Point", field: "DoubleValue"},
 	{api: "cloudmonitoring:v2beta2", schema: "Point", field: "Int64Value"},
 	{api: "cloudmonitoring:v2beta2", schema: "Point", field: "StringValue"},
+	{api: "compute:alpha", schema: "ExternalVpnGateway", field: "Id"},
 	{api: "compute:alpha", schema: "Scheduling", field: "AutomaticRestart"},
+	{api: "compute:beta", schema: "ExternalVpnGateway", field: "Id"},
 	{api: "compute:beta", schema: "MetadataItems", field: "Value"},
 	{api: "compute:beta", schema: "Scheduling", field: "AutomaticRestart"},
+	{api: "compute:v1", schema: "ExternalVpnGateway", field: "Id"},
 	{api: "compute:v1", schema: "MetadataItems", field: "Value"},
 	{api: "compute:v1", schema: "Scheduling", field: "AutomaticRestart"},
 	{api: "content:v2", schema: "AccountUser", field: "Admin"},
@@ -913,11 +997,19 @@ var pointerFields = []fieldName{
 	{api: "servicecontrol:v1", schema: "MetricValue", field: "DoubleValue"},
 	{api: "servicecontrol:v1", schema: "MetricValue", field: "Int64Value"},
 	{api: "servicecontrol:v1", schema: "MetricValue", field: "StringValue"},
+	{api: "sheets:v4", schema: "ExtendedValue", field: "BoolValue"},
+	{api: "sheets:v4", schema: "ExtendedValue", field: "FormulaValue"},
+	{api: "sheets:v4", schema: "ExtendedValue", field: "NumberValue"},
+	{api: "sheets:v4", schema: "ExtendedValue", field: "StringValue"},
+	{api: "slides:v1", schema: "Range", field: "EndIndex"},
+	{api: "slides:v1", schema: "Range", field: "StartIndex"},
 	{api: "sqladmin:v1beta4", schema: "Settings", field: "StorageAutoResize"},
+	{api: "sqladmin:v1", schema: "Settings", field: "StorageAutoResize"},
 	{api: "storage:v1", schema: "BucketLifecycleRuleCondition", field: "IsLive"},
 	{api: "storage:v1beta2", schema: "BucketLifecycleRuleCondition", field: "IsLive"},
 	{api: "tasks:v1", schema: "Task", field: "Completed"},
 	{api: "youtube:v3", schema: "ChannelSectionSnippet", field: "Position"},
+	{api: "youtube:v3", schema: "MonitorStreamInfo", field: "EnableMonitorStream"},
 }
 
 // forcePointerType reports whether p should be represented as a pointer type in its parent schema struct.
@@ -1174,6 +1266,15 @@ func (s *Schema) GoName() string {
 			s.goName = s.api.typeAsGo(s.typ, false)
 		} else {
 			base := initialCap(s.apiName)
+
+			// HACK(deklerk) Re-maps monitoring's Service field to MService so
+			// that the overall struct for this API can keep its name "Service".
+			// This takes care of "Service" the initial "goName" for "Service"
+			// refs.
+			if s.api.Name == "monitoring" && base == "Service" {
+				base = "MService"
+			}
+
 			s.goName = s.api.GetName(base)
 			if base == "Service" && s.goName != "Service" {
 				// Detect the case where a resource is going to clash with the
@@ -1280,7 +1381,12 @@ func (s *Schema) writeSchemaStruct(api *API) {
 		p.assignedGoName = pname
 		des := p.Description()
 		if des != "" {
-			s.api.p("%s", asComment("\t", fmt.Sprintf("%s: %s", pname, des)))
+			if pname == "Deprecated" {
+				// Workaround to not trip up linters on fields named Deprecated.
+				s.api.p("%s", asComment("\t", fmt.Sprintf("%s -- %s", pname, des)))
+			} else {
+				s.api.p("%s", asComment("\t", fmt.Sprintf("%s: %s", pname, des)))
+			}
 		}
 		addFieldValueComments(s.api.p, p, "\t", des != "")
 
@@ -1912,7 +2018,7 @@ func (meth *Method) generateCode() {
 
 	pn("\nfunc (c *%s) doRequest(alt string) (*http.Response, error) {", callName)
 	pn(`reqHeaders := make(http.Header)`)
-	pn(`reqHeaders.Set("x-goog-api-client", "gl-go/%s gdcl/%s")`, version.Go(), version.Repo)
+	pn(`reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/%s")`, version.Repo)
 	pn("for k, v := range c.header_ {")
 	pn(" reqHeaders[k] = v")
 	pn("}")
@@ -1949,10 +2055,7 @@ func (meth *Method) generateCode() {
 	pn("urls := googleapi.ResolveRelative(c.s.BasePath, %q)", meth.m.Path)
 	if meth.supportsMediaUpload() {
 		pn("if c.mediaInfo_ != nil {")
-		// Hack guess, since we get a 404 otherwise:
-		//pn("urls = googleapi.ResolveRelative(%q, %q)", a.apiBaseURL(), meth.mediaUploadPath())
-		// Further hack.  Discovery doc is wrong?
-		pn("  urls = strings.Replace(urls, %q, %q, 1)", "https://www.googleapis.com/", "https://www.googleapis.com/upload/")
+		pn("  urls = googleapi.ResolveRelative(c.s.BasePath, %q)", meth.mediaUploadPath())
 		pn(`  c.urlParams_.Set("uploadType", c.mediaInfo_.UploadType())`)
 		pn("}")
 
@@ -1981,8 +2084,11 @@ func (meth *Method) generateCode() {
 		}
 		pn(`})`)
 	}
-
-	pn("return gensupport.SendRequest(c.ctx_, c.s.client, req)")
+	if meth.supportsMediaUpload() && meth.api.Name == "storage" {
+		pn("return gensupport.SendRequestWithRetry(c.ctx_, c.s.client, req)")
+	} else {
+		pn("return gensupport.SendRequest(c.ctx_, c.s.client, req)")
+	}
 	pn("}")
 
 	if meth.supportsMediaDownload() {
@@ -1993,7 +2099,11 @@ func (meth *Method) generateCode() {
 		pn(`gensupport.SetOptions(c.urlParams_, opts...)`)
 		pn(`res, err := c.doRequest("media")`)
 		pn("if err != nil { return nil, err }")
-		pn("if err := googleapi.CheckMediaResponse(res); err != nil {")
+		if meth.api.Name == "storage" {
+			pn("if err := googleapi.CheckMediaResponse(res); err != nil {")
+		} else {
+			pn("if err := googleapi.CheckResponse(res); err != nil {")
+		}
 		pn("res.Body.Close()")
 		pn("return nil, err")
 		pn("}")

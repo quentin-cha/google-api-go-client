@@ -1,16 +1,6 @@
-// Copyright 2017 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2017 Google LLC.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 
 package bytestream
 
@@ -255,7 +245,7 @@ func TestClientWrite_AfterSetupClose(t *testing.T) {
 	setup.Close()
 	_, err := setup.client.NewWriter(setup.ctx, "should fail")
 	if err == nil {
-		t.Fatalf("NewWriter(%q): err=%v", "shoudl fail", err)
+		t.Fatalf("NewWriter(%q): err=%v", "should fail", err)
 	}
 }
 
@@ -317,6 +307,7 @@ func TestClientWrite_WriteFails(t *testing.T) {
 }
 
 func TestClientWrite_CloseAndRecvFails(t *testing.T) {
+	t.Skip("https://github.com/googleapis/google-api-go-client/issues/775")
 	setup := newTestSetup("")
 	w, err := setup.client.NewWriter(setup.ctx, "CloseAndRecvFails")
 	if err != nil {

@@ -1,4 +1,4 @@
-// Copyright 2019 Google LLC.
+// Copyright 2020 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -49,9 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
 	option "google.golang.org/api/option"
+	internaloption "google.golang.org/api/option/internaloption"
 	htransport "google.golang.org/api/transport/http"
 )
 
@@ -68,25 +69,18 @@ var _ = googleapi.Version
 var _ = errors.New
 var _ = strings.Replace
 var _ = context.Canceled
+var _ = internaloption.WithDefaultEndpoint
 
 const apiId = "abusiveexperiencereport:v1"
 const apiName = "abusiveexperiencereport"
 const apiVersion = "v1"
 const basePath = "https://abusiveexperiencereport.googleapis.com/"
-
-// OAuth2 scopes used by this API.
-const (
-	// Test scope for access to the Zoo service
-	XapiZooScope = "https://www.googleapis.com/auth/xapi.zoo"
-)
+const mtlsBasePath = "https://abusiveexperiencereport.mtls.googleapis.com/"
 
 // NewService creates a new Service.
 func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
-	scopesOption := option.WithScopes(
-		"https://www.googleapis.com/auth/xapi.zoo",
-	)
-	// NOTE: prepend, so we don't override user-specified scopes.
-	opts = append([]option.ClientOption{scopesOption}, opts...)
+	opts = append(opts, internaloption.WithDefaultEndpoint(basePath))
+	opts = append(opts, internaloption.WithDefaultMTLSEndpoint(mtlsBasePath))
 	client, endpoint, err := htransport.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -153,8 +147,7 @@ type ViolatingSitesService struct {
 
 // SiteSummaryResponse: Response message for GetSiteSummary.
 type SiteSummaryResponse struct {
-	// AbusiveStatus: The status of the site reviewed for the abusive
-	// experiences.
+	// AbusiveStatus: The site's Abusive Experience Report status.
 	//
 	// Possible values:
 	//   "UNKNOWN" - Not reviewed.
@@ -162,26 +155,34 @@ type SiteSummaryResponse struct {
 	//   "FAILING" - Failing.
 	AbusiveStatus string `json:"abusiveStatus,omitempty"`
 
-	// EnforcementTime: The time at which enforcement begins.
+	// EnforcementTime: The time at which
+	// [enforcement](https://support.google.com/webtools/answer/7538608)
+	// against the site began or will begin. Not set when the filter_status
+	// is OFF.
 	EnforcementTime string `json:"enforcementTime,omitempty"`
 
-	// FilterStatus: The abusive experience enforcement status of the site.
+	// FilterStatus: The site's [enforcement
+	// status](https://support.google.com/webtools/answer/7538608).
 	//
 	// Possible values:
 	//   "UNKNOWN" - N/A.
-	//   "ON" - Ad filtering is on.
-	//   "OFF" - Ad filtering is off.
-	//   "PAUSED" - Ad filtering is paused.
-	//   "PENDING" - Ad filtering is pending.
+	//   "ON" - Enforcement is on.
+	//   "OFF" - Enforcement is off.
+	//   "PAUSED" - Enforcement is paused.
+	//   "PENDING" - Enforcement is pending.
 	FilterStatus string `json:"filterStatus,omitempty"`
 
-	// LastChangeTime: The last time that the site changed status.
+	// LastChangeTime: The time at which the site's status last changed.
 	LastChangeTime string `json:"lastChangeTime,omitempty"`
 
-	// ReportUrl: A link that leads to a full abusive experience report.
+	// ReportUrl: A link to the full Abusive Experience Report for the site.
+	// Not set in ViolatingSitesResponse. Note that you must complete the
+	// [Search Console verification
+	// process](https://support.google.com/webmasters/answer/9008080) for
+	// the site before you can access the full report.
 	ReportUrl string `json:"reportUrl,omitempty"`
 
-	// ReviewedSite: The name of the site reviewed.
+	// ReviewedSite: The name of the reviewed site, e.g. `google.com`.
 	ReviewedSite string `json:"reviewedSite,omitempty"`
 
 	// UnderReview: Whether the site is currently under review.
@@ -216,7 +217,7 @@ func (s *SiteSummaryResponse) MarshalJSON() ([]byte, error) {
 
 // ViolatingSitesResponse: Response message for ListViolatingSites.
 type ViolatingSitesResponse struct {
-	// ViolatingSites: A list of summaries of violating sites.
+	// ViolatingSites: The list of violating sites.
 	ViolatingSites []*SiteSummaryResponse `json:"violatingSites,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
@@ -258,7 +259,7 @@ type SitesGetCall struct {
 	header_      http.Header
 }
 
-// Get: Gets a summary of the abusive experience rating of a site.
+// Get: Gets a site's Abusive Experience Report summary.
 func (r *SitesService) Get(name string) *SitesGetCall {
 	c := &SitesGetCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.name = name
@@ -302,7 +303,7 @@ func (c *SitesGetCall) Header() http.Header {
 
 func (c *SitesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -364,7 +365,7 @@ func (c *SitesGetCall) Do(opts ...googleapi.CallOption) (*SiteSummaryResponse, e
 	}
 	return ret, nil
 	// {
-	//   "description": "Gets a summary of the abusive experience rating of a site.",
+	//   "description": "Gets a site's Abusive Experience Report summary.",
 	//   "flatPath": "v1/sites/{sitesId}",
 	//   "httpMethod": "GET",
 	//   "id": "abusiveexperiencereport.sites.get",
@@ -373,7 +374,7 @@ func (c *SitesGetCall) Do(opts ...googleapi.CallOption) (*SiteSummaryResponse, e
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required. The site property whose abusive\nexperiences have been reviewed, and it must be URL-encoded. For example,\nsites/https%3A%2F%2Fwww.google.com. The server will return an error of\nBAD_REQUEST if this field is not filled in. Note that if the site property\nis not yet verified in Search Console, the reportUrl field\nreturned by the API will lead to the verification page, prompting the user\nto go through that process before they can gain access to the Abusive\nExperience Report.",
+	//       "description": "Required. The name of the site whose summary to get, e.g. `sites/http%3A%2F%2Fwww.google.com%2F`. Format: `sites/{site}`",
 	//       "location": "path",
 	//       "pattern": "^sites/[^/]+$",
 	//       "required": true,
@@ -383,10 +384,7 @@ func (c *SitesGetCall) Do(opts ...googleapi.CallOption) (*SiteSummaryResponse, e
 	//   "path": "v1/{+name}",
 	//   "response": {
 	//     "$ref": "SiteSummaryResponse"
-	//   },
-	//   "scopes": [
-	//     "https://www.googleapis.com/auth/xapi.zoo"
-	//   ]
+	//   }
 	// }
 
 }
@@ -401,7 +399,7 @@ type ViolatingSitesListCall struct {
 	header_      http.Header
 }
 
-// List: Lists sites with failing Abusive Experience Report statuses.
+// List: Lists sites that are failing in the Abusive Experience Report.
 func (r *ViolatingSitesService) List() *ViolatingSitesListCall {
 	c := &ViolatingSitesListCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	return c
@@ -444,7 +442,7 @@ func (c *ViolatingSitesListCall) Header() http.Header {
 
 func (c *ViolatingSitesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
-	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20190802")
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/20201213")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -503,7 +501,7 @@ func (c *ViolatingSitesListCall) Do(opts ...googleapi.CallOption) (*ViolatingSit
 	}
 	return ret, nil
 	// {
-	//   "description": "Lists sites with failing Abusive Experience Report statuses.",
+	//   "description": "Lists sites that are failing in the Abusive Experience Report.",
 	//   "flatPath": "v1/violatingSites",
 	//   "httpMethod": "GET",
 	//   "id": "abusiveexperiencereport.violatingSites.list",
@@ -512,10 +510,7 @@ func (c *ViolatingSitesListCall) Do(opts ...googleapi.CallOption) (*ViolatingSit
 	//   "path": "v1/violatingSites",
 	//   "response": {
 	//     "$ref": "ViolatingSitesResponse"
-	//   },
-	//   "scopes": [
-	//     "https://www.googleapis.com/auth/xapi.zoo"
-	//   ]
+	//   }
 	// }
 
 }
