@@ -24,6 +24,7 @@ package bundler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"reflect"
 	"sync"
@@ -118,6 +119,7 @@ type bundle struct {
 // Configure the Bundler by setting its thresholds and limits before calling
 // any of its methods.
 func NewBundler(itemExample interface{}, handler func(interface{})) *Bundler {
+	fmt.Println("NEW BUNDLER")
 	b := &Bundler{
 		DelayThreshold:       DefaultDelayThreshold,
 		BundleCountThreshold: DefaultBundleCountThreshold,
@@ -168,6 +170,7 @@ func (b *Bundler) Add(item interface{}, size int) error {
 		return ErrOverflow
 	}
 	b.add(item, size)
+	fmt.Println("ADDED TO BUNDLER")
 	return nil
 }
 
@@ -239,6 +242,7 @@ func (b *Bundler) AddWait(ctx context.Context, item interface{}, size int) error
 // Flush invokes the handler for all remaining items in the Bundler and waits
 // for it to return.
 func (b *Bundler) Flush() {
+	fmt.Println("BUNDLER FLUSH START")
 	b.mu.Lock()
 	b.startFlushLocked()
 	// Here, all bundles with tickets < b.nextTicket are
@@ -248,14 +252,17 @@ func (b *Bundler) Flush() {
 	b.mu.Unlock()
 	b.initSemaphores()
 	b.waitUntilAllHandled(t)
+	fmt.Println("BUNDLER FLUSH END")
 }
 
 func (b *Bundler) startFlushLocked() {
 	if b.flushTimer != nil {
 		b.flushTimer.Stop()
+		fmt.Println("STOP BUNDLER FLUSH TIMER")
 		b.flushTimer = nil
 	}
 	if b.curBundle.items.Len() == 0 {
+		fmt.Println("NO BUNDLE TO FLUSH")
 		return
 	}
 	// Here, both semaphores must have been initialized.
@@ -269,7 +276,9 @@ func (b *Bundler) startFlushLocked() {
 			b.release(ticket)
 		}()
 		b.acquire(ticket)
+		fmt.Println("BUNDLER HANDLER INVOKE")
 		b.handler(bun.items.Interface())
+		fmt.Println("BUNDLER HANDLER DONE")
 	}()
 }
 
